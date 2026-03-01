@@ -37,3 +37,4 @@ out/
 CLAUDE*
 .aiplans/
 .claude/
+.agent/
