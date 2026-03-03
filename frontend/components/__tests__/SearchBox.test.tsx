@@ -7,7 +7,7 @@ describe('SearchBox', () => {
     render(<SearchBox onSubmit={jest.fn()} />)
 
     expect(
-      screen.getByPlaceholderText(/pregunta sobre.*legislación/i)
+      screen.getByPlaceholderText(/despedir sin justa causa/i)
     ).toBeInTheDocument()
   })
 

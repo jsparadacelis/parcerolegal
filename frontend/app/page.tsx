@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { SearchBox } from '@/components/SearchBox'
 import { LoadingSkeleton } from '@/components/LoadingSkeleton'
 import { ResultPanel } from '@/components/ResultPanel'
-import { Disclaimer } from '@/components/Disclaimer'
 import { simulateQuery, EXAMPLE_QUERY } from '@/lib/mockData'
 import type { QueryResponse } from '@/lib/types'
 
@@ -27,27 +26,37 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-800/50">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-yellow-500">
-            parcero<span className="text-slate-300">legal</span>.co
-          </h1>
+    <div className="min-h-screen bg-surface-2">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-terra rounded-[7px] flex items-center justify-center flex-shrink-0">
+            <svg className="text-white w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3L4 9v12h16V9L12 3z" />
+              <path d="M9 15l3 3 3-3" />
+              <path d="M12 18V9" />
+            </svg>
+          </div>
+          <span className="text-base font-bold tracking-tight text-ink">
+            parcero<span className="font-normal text-ink-3">legal</span>
+          </span>
         </div>
-      </header>
+        <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-2.5 py-1 rounded-full">
+          No reemplaza un abogado
+        </span>
+      </nav>
 
       {/* Main */}
-      <main className="container mx-auto max-w-4xl px-4 py-12">
+      <main className="container mx-auto max-w-3xl px-4 py-12">
         {/* Hero */}
         {!response && !isLoading && (
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-4xl font-bold tracking-tight text-slate-100">
-              Busca en la legislación colombiana
-            </h2>
-            <p className="mb-8 text-lg text-slate-400">
-              Motor de búsqueda legal gratuito con IA. Encuentra respuestas basadas en
-              la Constitución y jurisprudencia de Colombia.
+          <div className="mb-10 text-center">
+            <h1 className="mb-3 text-4xl font-bold tracking-tight text-ink">
+              tu derecho, claro.
+            </h1>
+            <p className="mb-8 text-lg text-ink-2 font-normal">
+              Consultá la Constitución y jurisprudencia colombiana en lenguaje normal.
+              Gratis, sin traje, sin protocolo.
             </p>
           </div>
         )}
@@ -57,10 +66,10 @@ export default function Home() {
 
         {/* Example */}
         {!response && !isLoading && (
-          <div className="mt-6 text-center">
+          <div className="mt-5 text-center">
             <button
               onClick={handleExampleClick}
-              className="text-sm text-slate-400 underline-offset-2 hover:text-yellow-500 hover:underline"
+              className="text-sm text-ink-3 hover:text-terra transition-colors duration-150"
             >
               Prueba: &quot;{EXAMPLE_QUERY}&quot;
             </button>
@@ -71,20 +80,15 @@ export default function Home() {
         {isLoading && <LoadingSkeleton />}
 
         {/* Results */}
-        {response && (
-          <>
-            <ResultPanel response={response} />
-            <Disclaimer />
-          </>
-        )}
+        {response && <ResultPanel response={response} />}
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-slate-700 py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-slate-500">
+      <footer className="mt-16 border-t border-border py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-ink-3">
           <p>
             Beta · Los resultados se basan en IA y pueden contener errores ·{' '}
-            <a href="#" className="text-sky-400 hover:underline">
+            <a href="#" className="text-terra hover:underline underline-offset-2">
               Acerca de
             </a>
           </p>

@@ -32,14 +32,14 @@ describe('SourceCard', () => {
   it('applies constitution styling for constitution type', () => {
     const { container } = render(<SourceCard source={mockSource} />)
 
-    expect(container.querySelector('.border-sky-500\\/30')).toBeInTheDocument()
+    expect(container.querySelector('.border-terra\\/20')).toBeInTheDocument()
   })
 
   it('applies sentencia styling for sentencia type', () => {
     const sentenciaSource = { ...mockSource, type: 'sentencia' as const }
     const { container } = render(<SourceCard source={sentenciaSource} />)
 
-    expect(container.querySelector('.border-purple-500\\/30')).toBeInTheDocument()
+    expect(container.querySelector('.border-ok\\/30')).toBeInTheDocument()
   })
 
   it('truncates long excerpts with ellipsis', () => {

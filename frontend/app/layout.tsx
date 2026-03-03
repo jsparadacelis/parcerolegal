@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
 export const metadata: Metadata = {
-  title: "Parcero Legal - Buscador de legislación colombiana",
+  title: "parcerolegal — tu derecho, claro",
   description: "Motor de búsqueda legal gratuito para Colombia. Encuentra respuestas basadas en la Constitución y jurisprudencia.",
 };
 
@@ -19,7 +13,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased">
         {children}
       </body>
     </html>

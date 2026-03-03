@@ -2,17 +2,17 @@ import { render, screen } from '@testing-library/react'
 import { Disclaimer } from '../Disclaimer'
 
 describe('Disclaimer', () => {
-  it('displays beta warning message', () => {
+  it('displays warning icon', () => {
     render(<Disclaimer />)
 
-    expect(screen.getByText(/beta/i)).toBeInTheDocument()
+    expect(screen.getByText(/orientativa/i)).toBeInTheDocument()
   })
 
   it('warns users about information accuracy', () => {
     render(<Disclaimer />)
 
     expect(
-      screen.getByText(/no constituye asesoría legal/i)
+      screen.getByText(/no reemplaza.*asesoría/i)
     ).toBeInTheDocument()
   })
 
@@ -20,14 +20,14 @@ describe('Disclaimer', () => {
     render(<Disclaimer />)
 
     expect(
-      screen.getByText(/consulta.*profesional/i)
+      screen.getByText(/profesional para tu caso/i)
     ).toBeInTheDocument()
   })
 
-  it('has warning visual styling', () => {
+  it('has amber warning visual styling', () => {
     const { container } = render(<Disclaimer />)
     const disclaimer = container.firstChild
 
-    expect(disclaimer).toHaveClass('border-yellow-500/20')
+    expect(disclaimer).toHaveClass('border-amber')
   })
 })
