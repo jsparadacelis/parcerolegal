@@ -35,6 +35,5 @@ out/
 
 .env.*
 CLAUDE*
-.aiplans/
 .claude/
 .agent/

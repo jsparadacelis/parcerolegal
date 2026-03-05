@@ -1,12 +1,9 @@
-"""
-Tests for scrape_constitucion.py (TDD).
-
-Run with:
-    pytest data/tests/scripts/test_scrape_constitucion.py -v
-"""
 import json
 import re
 from pathlib import Path
+
+from data.scripts.scrape_constitucion import parse_articles
+from data.scripts.scrape_constitucion import build_metadata
 
 import pytest
 
@@ -15,39 +12,31 @@ SAMPLE_HTML = (FIXTURES_DIR / "constitucion_sample.html").read_text(encoding="ut
 SOURCE_URL = "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=4125"
 
 
-# ---------------------------------------------------------------------------
-# Helpers — import lazily so test collection doesn't fail before implementation
-# ---------------------------------------------------------------------------
 
 def _parse_articles(html, url):
-    from data.scripts.scrape_constitucion import parse_articles
     return parse_articles(html, url)
 
 
 def _build_metadata(articles, url):
-    from data.scripts.scrape_constitucion import build_metadata
     return build_metadata(articles, url)
 
 
-# ---------------------------------------------------------------------------
-# parse_articles
-# ---------------------------------------------------------------------------
-
 def test_parse_articles_returns_list():
-    """parse_articles devuelve una lista no vacía."""
     articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
+
     assert isinstance(articles, list)
     assert len(articles) > 0
 
 
 def test_article_has_required_fields():
-    """Cada artículo tiene los campos requeridos; capitulo puede ser None."""
     articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
+
     required = {"id", "numero", "titulo", "texto", "url_original"}
+
     for art in articles:
         missing = required - art.keys()
         assert not missing, f"Artículo {art.get('id')} le faltan campos: {missing}"
-        assert "capitulo" in art  # presente pero puede ser None
+        assert "capitulo" in art
 
 
 def test_article_id_format():
