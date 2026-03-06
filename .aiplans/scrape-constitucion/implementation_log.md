@@ -1,6 +1,6 @@
 # Implementation Log: scrape_constitucion.py
 
-## Status: Done (unit tests) | Pendiente: integration test con red real
+## Status: Done
 
 ---
 
@@ -31,7 +31,11 @@
 - Tests en `data/tests/scripts/` (no dentro de `data/scripts/tests/`) — tests como hermano de scripts
 - Convenciones Python guardadas como skill en `.claude/skills/python-conventions/`
 
-### Pendiente
-- [ ] Correr integration test contra la página real (`python data/scripts/scrape_constitucion.py`)
-- [ ] Validar que el conteo de artículos sea ~380
-- [ ] Marcar tareas Notion como Done tras integration test exitoso
+### 2026-03-06 — Integration test + fix títulos
+
+- Integration test contra página real: 383 artículos extraídos
+- Descubierto que el HTML de funcionpublica.gov.co no incluye encabezados de Títulos I-XI (solo XII y XIII existen como `<p><strong>`)
+- Fix: mapa estático `_STRUCTURE_MAP` con los 13 títulos y ~30 capítulos de la Constitución, aplicado como post-procesamiento en `parse_articles()`
+- Resultado: 0 artículos sin título, 17 sin capítulo (correcto: Títulos I y XIII no tienen capítulos)
+- 19/19 unit tests passing
+- JSON válido, conteo correcto (383 arts, rango art_1 a art_380)
