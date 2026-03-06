@@ -137,7 +137,7 @@ def test_titulo_tracked_across_articles():
     titulo2_arts = [a for a in articles if a["numero"] in {11, 12, 42}]
     assert titulo2_arts, "No se encontraron artículos del Título II"
     for art in titulo2_arts:
-        assert "II" in art["titulo"] or "DERECHOS" in art["titulo"].upper(), (
+        assert "TITULO II" in art["titulo"], (
             f"Art. {art['numero']}: titulo no refleja el Título II: '{art['titulo']}'"
         )
 
