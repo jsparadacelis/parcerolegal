@@ -16,6 +16,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
+@lru_cache
 def get_use_case() -> QueryUseCase:
     settings = get_settings()
     return QueryUseCase(
