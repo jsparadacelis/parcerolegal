@@ -6,7 +6,7 @@ import httpx
 
 
 class SentenceTransformerEmbedder:
-    _BASE = "https://api-inference.huggingface.co/pipeline/feature-extraction"
+    _BASE = "https://router.huggingface.co/hf-inference/pipeline/feature-extraction"
 
     def __init__(self, model_name: str, hf_token: str = "") -> None:
         self._url = f"{self._BASE}/{model_name}"
