@@ -1,13 +1,13 @@
-"""Sentence-transformers adapter — implements Embedder port."""
+"""fastembed adapter — implements Embedder port via ONNX (no PyTorch required)."""
 
 from __future__ import annotations
 
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 
 class SentenceTransformerEmbedder:
     def __init__(self, model_name: str) -> None:
-        self._model = SentenceTransformer(model_name)
+        self._model = TextEmbedding(model_name=model_name)
 
     def embed(self, text: str) -> list[float]:
-        return self._model.encode(text)
+        return next(iter(self._model.embed([text]))).tolist()
