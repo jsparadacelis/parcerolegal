@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     qdrant_url: str = ""
     qdrant_api_key: str = ""
+    hf_token: str = ""
     environment: str = "development"
     similarity_threshold: float = 0.65
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

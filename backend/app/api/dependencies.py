@@ -20,7 +20,7 @@ def get_settings() -> Settings:
 def get_use_case() -> QueryUseCase:
     settings = get_settings()
     return QueryUseCase(
-        embedder=SentenceTransformerEmbedder(model_name=settings.embedding_model),
+        embedder=SentenceTransformerEmbedder(model_name=settings.embedding_model, hf_token=settings.hf_token),
         store=QdrantVectorStore(
             url=settings.qdrant_url,
             api_key=settings.qdrant_api_key,
