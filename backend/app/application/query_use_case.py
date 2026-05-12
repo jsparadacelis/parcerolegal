@@ -2,8 +2,27 @@
 
 from __future__ import annotations
 
-from backend.app.domain.entities import QueryResult
+import time
+
+from backend.app.domain.entities import QueryResult, RetrievedChunk, Source
 from backend.app.domain.ports import Embedder, LLMClient, VectorStore
+from backend.app.domain.services import filter_by_score, is_out_of_scope
+
+_OUT_OF_SCOPE_ANSWER = (
+    "Tu pregunta está fuera del alcance de la legislación colombiana disponible. "
+    "Por favor formula una pregunta relacionada con la Constitución Política de Colombia "
+    "o las sentencias de la Corte Constitucional."
+)
+
+_PROMPT_TEMPLATE = """\
+Eres un asistente jurídico colombiano. Responde en español claro y preciso.
+Basa tu respuesta ÚNICAMENTE en los siguientes fragmentos de la legislación colombiana:
+
+{context}
+
+Pregunta: {question}
+
+Respuesta:"""
 
 
 class QueryUseCase:
@@ -18,4 +37,50 @@ class QueryUseCase:
         self._llm = llm
 
     def execute(self, question: str) -> QueryResult:
-        raise NotImplementedError("RAG pipeline implementation pending")
+        start = time.time()
+
+        embedding = self._embedder.embed(question)
+        chunks = self._store.search(embedding, top_k=5)
+        filtered = filter_by_score(chunks)
+
+        elapsed_ms = lambda: (time.time() - start) * 1000
+
+        if is_out_of_scope(filtered):
+            return QueryResult(
+                answer=_OUT_OF_SCOPE_ANSWER,
+                sources=[],
+                out_of_scope=True,
+                processing_time_ms=elapsed_ms(),
+            )
+
+        context = "\n\n".join(
+            f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
+        )
+        prompt = _PROMPT_TEMPLATE.format(context=context, question=question)
+        answer = self._llm.generate(prompt)
+        sources = [_chunk_to_source(chunk) for chunk in filtered]
+
+        return QueryResult(
+            answer=answer,
+            sources=sources,
+            out_of_scope=False,
+            processing_time_ms=elapsed_ms(),
+        )
+
+
+def _chunk_to_source(chunk: RetrievedChunk) -> Source:
+    if chunk.source_type == "constitucion":
+        article_numero = chunk.metadata.get("article_numero", "")
+        titulo = chunk.metadata.get("titulo", "")
+        title = f"Art. {article_numero} — {titulo}" if article_numero else titulo
+        url = chunk.metadata.get("url_original", "")
+    else:
+        title = chunk.metadata.get("sentencia_id", "")
+        url = chunk.metadata.get("source_url", "")
+
+    return Source(
+        chunk_id=chunk.chunk_id,
+        source_type=chunk.source_type,
+        title=title,
+        url=url,
+    )

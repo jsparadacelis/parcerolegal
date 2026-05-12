@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from sentence_transformers import SentenceTransformer
+
 
 class SentenceTransformerEmbedder:
     def __init__(self, model_name: str) -> None:
-        self._model_name = model_name
+        self._model = SentenceTransformer(model_name)
 
     def embed(self, text: str) -> list[float]:
-        raise NotImplementedError
+        return self._model.encode(text)
