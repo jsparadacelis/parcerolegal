@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import httpx
+import requests
 
 
 class SentenceTransformerEmbedder:
@@ -13,15 +13,14 @@ class SentenceTransformerEmbedder:
         self._headers = {"Authorization": f"Bearer {hf_token}"} if hf_token else {}
 
     def embed(self, text: str) -> list[float]:
-        response = httpx.post(
+        response = requests.post(
             self._url,
-            json={"inputs": text, "options": {"wait_for_model": True}},
+            json={"inputs": text},
             headers=self._headers,
             timeout=30.0,
         )
         response.raise_for_status()
         data = response.json()
-        # HF returns [[float, ...]] for a single sentence-transformer input
         if data and isinstance(data[0], list):
             return data[0]
         return data
