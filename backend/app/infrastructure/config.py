@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     hf_token: str = ""
     environment: str = "development"
     similarity_threshold: float = 0.65
-    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embedding_model: str = "ibm-granite/granite-embedding-97m-multilingual-r2"
     llm_model: str = "llama-3.1-70b-versatile"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1024
