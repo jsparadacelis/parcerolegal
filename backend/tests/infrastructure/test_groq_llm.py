@@ -2,25 +2,27 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import patch
 
-import groq
 import pytest
+import responses as rsps
 
 from backend.app.infrastructure.groq_llm import GroqLLMClient
 
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_MODEL = "llama-3.1-70b-versatile"
 
-def _make_groq_response(content: str) -> MagicMock:
-    response = MagicMock()
-    response.choices[0].message.content = content
-    return response
+
+def _groq_body(content: str) -> dict:
+    return {"choices": [{"message": {"content": content}}]}
 
 
 @pytest.fixture
 def client() -> GroqLLMClient:
     return GroqLLMClient(
         api_key="test-key",
-        model="llama-3.1-70b-versatile",
+        model=_MODEL,
         temperature=0.0,
         max_tokens=1024,
     )
@@ -28,83 +30,84 @@ def client() -> GroqLLMClient:
 
 class TestGroqLLMClientGenerate:
     def test_returns_content_from_api(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.return_value = _make_groq_response("Respuesta legal.")
-        client._groq = mock_groq
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("Respuesta legal."), status=200)
+            assert client.generate("¿Qué es el habeas corpus?") == "Respuesta legal."
 
-        result = client.generate("¿Qué es el habeas corpus?")
+    def test_sends_correct_parameters_without_system(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+            client.generate("pregunta")
+            sent = json.loads(r.calls[0].request.body)
 
-        assert result == "Respuesta legal."
+        assert sent["model"] == _MODEL
+        assert sent["messages"] == [{"role": "user", "content": "pregunta"}]
+        assert sent["temperature"] == 0.0
+        assert sent["max_tokens"] == 1024
 
-    def test_sends_correct_parameters(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.return_value = _make_groq_response("ok")
-        client._groq = mock_groq
+    def test_sends_system_message_when_provided(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+            client.generate("pregunta", system="Eres un asistente jurídico.")
+            sent = json.loads(r.calls[0].request.body)
 
-        client.generate("pregunta")
-
-        mock_groq.chat.completions.create.assert_called_once_with(
-            model="llama-3.1-70b-versatile",
-            messages=[{"role": "user", "content": "pregunta"}],
-            temperature=0.0,
-            max_tokens=1024,
-        )
-
-    def test_retries_on_rate_limit_and_succeeds(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.side_effect = [
-            groq.RateLimitError("rate limit", response=MagicMock(), body={}),
-            _make_groq_response("Respuesta tras reintento."),
+        assert sent["messages"] == [
+            {"role": "system", "content": "Eres un asistente jurídico."},
+            {"role": "user", "content": "pregunta"},
         ]
-        client._groq = mock_groq
 
-        with patch("backend.app.infrastructure.groq_llm.time.sleep"):
-            result = client.generate("pregunta")
+    def test_omits_system_message_when_empty(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+            client.generate("pregunta")
+            sent = json.loads(r.calls[0].request.body)
 
-        assert result == "Respuesta tras reintento."
-        assert mock_groq.chat.completions.create.call_count == 2
+        assert sent["messages"] == [{"role": "user", "content": "pregunta"}]
+
+    def test_sends_auth_header(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+            client.generate("pregunta")
+            assert r.calls[0].request.headers["Authorization"] == "Bearer test-key"
+
+    def test_retries_on_429_and_succeeds(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json={"error": "rate limit"}, status=429)
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("Respuesta tras reintento."), status=200)
+            with patch("backend.app.infrastructure.groq_llm.time.sleep"):
+                result = client.generate("pregunta")
+            assert result == "Respuesta tras reintento."
+            assert len(r.calls) == 2
 
     def test_raises_after_max_retries(self, client):
-        mock_groq = MagicMock()
-        rate_limit_err = groq.RateLimitError("rate limit", response=MagicMock(), body={})
-        mock_groq.chat.completions.create.side_effect = [rate_limit_err] * 4
-        client._groq = mock_groq
+        with rsps.RequestsMock() as r:
+            for _ in range(3):
+                r.add(rsps.POST, _GROQ_URL, json={"error": "rate limit"}, status=429)
+            with patch("backend.app.infrastructure.groq_llm.time.sleep"):
+                with pytest.raises(Exception):
+                    client.generate("pregunta")
+            assert len(r.calls) == 3
 
-        with patch("backend.app.infrastructure.groq_llm.time.sleep"):
-            with pytest.raises(groq.RateLimitError):
+    def test_raises_immediately_on_non_429_error(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json={"error": "server error"}, status=500)
+            with pytest.raises(Exception):
                 client.generate("pregunta")
-
-        assert mock_groq.chat.completions.create.call_count == 3
-
-    def test_raises_immediately_on_non_rate_limit_error(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.side_effect = groq.APIConnectionError(request=MagicMock())
-        client._groq = mock_groq
-
-        with pytest.raises(groq.APIConnectionError):
-            client.generate("pregunta")
-
-        assert mock_groq.chat.completions.create.call_count == 1
+            assert len(r.calls) == 1
 
     def test_raises_on_empty_response_content(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.return_value = _make_groq_response("")
-        client._groq = mock_groq
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body(""), status=200)
+            with pytest.raises(ValueError, match="vacía"):
+                client.generate("pregunta")
 
-        with pytest.raises(ValueError, match="vacía"):
-            client.generate("pregunta")
+    def test_retry_uses_exponential_backoff(self, client):
+        with rsps.RequestsMock() as r:
+            r.add(rsps.POST, _GROQ_URL, json={"error": "rl"}, status=429)
+            r.add(rsps.POST, _GROQ_URL, json={"error": "rl"}, status=429)
+            r.add(rsps.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+            with patch("backend.app.infrastructure.groq_llm.time.sleep") as mock_sleep:
+                client.generate("pregunta")
 
-    def test_sleep_uses_exponential_backoff(self, client):
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create.side_effect = [
-            groq.RateLimitError("rl", response=MagicMock(), body={}),
-            groq.RateLimitError("rl", response=MagicMock(), body={}),
-            _make_groq_response("ok"),
-        ]
-        client._groq = mock_groq
-
-        with patch("backend.app.infrastructure.groq_llm.time.sleep") as mock_sleep:
-            client.generate("pregunta")
-
-        sleep_calls = [c.args[0] for c in mock_sleep.call_args_list]
-        assert sleep_calls[1] > sleep_calls[0], "second delay should be longer than first"
+        delays = [c.args[0] for c in mock_sleep.call_args_list]
+        assert delays[1] > delays[0]

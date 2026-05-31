@@ -14,15 +14,24 @@ _OUT_OF_SCOPE_ANSWER = (
     "o las sentencias de la Corte Constitucional."
 )
 
-_PROMPT_TEMPLATE = """\
-Eres un asistente jurídico colombiano. Responde en español claro y preciso.
-Basa tu respuesta ÚNICAMENTE en los siguientes fragmentos de la legislación colombiana:
+_SYSTEM_ROLE = """\
+Eres un asistente jurídico especializado en derecho constitucional colombiano.
+Responde ÚNICAMENTE basándote en los fragmentos de legislación proporcionados.
 
+Reglas:
+- Cita los fragmentos en tu respuesta usando [1], [2], etc.
+- Si el contexto no cubre la pregunta, di: "Esta información no está disponible en los documentos proporcionados."
+- No añadas información externa ni interpretaciones propias.
+- Responde en español, con tono formal pero accesible para no especialistas.
+- Usa párrafos cortos. Usa listas cuando mejoren la claridad.\
+"""
+
+_USER_TEMPLATE = """\
+Fragmentos relevantes:
 {context}
 
-Pregunta: {question}
-
-Respuesta:"""
+Pregunta: {question}\
+"""
 
 
 class QueryUseCase:
@@ -56,8 +65,8 @@ class QueryUseCase:
         context = "\n\n".join(
             f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
         )
-        prompt = _PROMPT_TEMPLATE.format(context=context, question=question)
-        answer = self._llm.generate(prompt)
+        prompt = _USER_TEMPLATE.format(context=context, question=question)
+        answer = self._llm.generate(prompt, system=_SYSTEM_ROLE)
         sources = [_chunk_to_source(chunk) for chunk in filtered]
 
         return QueryResult(

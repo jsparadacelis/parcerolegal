@@ -1,12 +1,12 @@
-"""Groq/Llama adapter — implements LLMClient port."""
+"""Groq/Llama adapter — implements LLMClient port via direct HTTP."""
 
 from __future__ import annotations
 
 import time
 
-import groq
+import requests
 
-
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 _MAX_RETRIES = 3
 _BASE_DELAY = 1.0
 
@@ -16,25 +16,36 @@ class GroqLLMClient:
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
-        self._groq = groq.Groq(api_key=api_key)
+        self._headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
 
-    def generate(self, prompt: str) -> str:
-        last_error: groq.RateLimitError | None = None
+    def generate(self, prompt: str, system: str = "") -> str:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": self._temperature,
+            "max_tokens": self._max_tokens,
+        }
+
+        last_response: requests.Response | None = None
 
         for attempt in range(_MAX_RETRIES):
-            try:
-                response = self._groq.chat.completions.create(
-                    model=self._model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=self._temperature,
-                    max_tokens=self._max_tokens,
-                )
-                content = response.choices[0].message.content
-                if not content:
-                    raise ValueError("La respuesta del LLM está vacía")
-                return content
-            except groq.RateLimitError as exc:
-                last_error = exc
-                time.sleep(_BASE_DELAY * (2**attempt))
+            response = requests.post(_GROQ_URL, json=payload, headers=self._headers)
+            if response.status_code == 429:
+                last_response = response
+                time.sleep(_BASE_DELAY * (2 ** attempt))
+                continue
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            if not content:
+                raise ValueError("La respuesta del LLM está vacía")
+            return content
 
-        raise last_error
+        last_response.raise_for_status()

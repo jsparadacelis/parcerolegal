@@ -19,6 +19,18 @@ _CHUNK_ABOVE = RetrievedChunk(
     },
 )
 
+_CHUNK_ABOVE_2 = RetrievedChunk(
+    chunk_id="c4",
+    text="Toda persona tiene derecho a la libertad.",
+    score=0.78,
+    source_type="constitucion",
+    metadata={
+        "article_numero": "28",
+        "titulo": "Libertad",
+        "url_original": "http://example.com/art28",
+    },
+)
+
 _CHUNK_BELOW = RetrievedChunk(
     chunk_id="c2",
     text="Texto irrelevante.",
@@ -106,7 +118,7 @@ class TestQueryUseCaseExecute:
         calls: list[str] = []
 
         class TrackingLLM:
-            def generate(self, prompt: str) -> str:
+            def generate(self, prompt: str, system: str = "") -> str:
                 calls.append(prompt)
                 return "respuesta"
 
@@ -119,11 +131,11 @@ class TestQueryUseCaseExecute:
         assert calls == []
 
     def test_prompt_contains_question_and_chunk_text(self):
-        prompts: list[str] = []
+        calls: list[dict] = []
 
         class CapturingLLM:
-            def generate(self, prompt: str) -> str:
-                prompts.append(prompt)
+            def generate(self, prompt: str, system: str = "") -> str:
+                calls.append({"prompt": prompt, "system": system})
                 return "respuesta"
 
         uc = QueryUseCase(
@@ -132,8 +144,57 @@ class TestQueryUseCaseExecute:
             llm=CapturingLLM(),
         )
         uc.execute("¿Qué es el habeas corpus?")
-        assert "¿Qué es el habeas corpus?" in prompts[0]
-        assert "El habeas corpus protege la libertad personal." in prompts[0]
+        assert "¿Qué es el habeas corpus?" in calls[0]["prompt"]
+        assert "El habeas corpus protege la libertad personal." in calls[0]["prompt"]
+
+    def test_llm_receives_non_empty_system_role(self):
+        calls: list[dict] = []
+
+        class CapturingLLM:
+            def generate(self, prompt: str, system: str = "") -> str:
+                calls.append({"prompt": prompt, "system": system})
+                return "respuesta"
+
+        uc = QueryUseCase(
+            embedder=FakeEmbedder(),
+            store=FakeVectorStore(chunks=[_CHUNK_ABOVE]),
+            llm=CapturingLLM(),
+        )
+        uc.execute("¿Qué es el habeas corpus?")
+        assert calls[0]["system"] != ""
+
+    def test_system_role_instructs_citations(self):
+        calls: list[dict] = []
+
+        class CapturingLLM:
+            def generate(self, prompt: str, system: str = "") -> str:
+                calls.append({"prompt": prompt, "system": system})
+                return "respuesta"
+
+        uc = QueryUseCase(
+            embedder=FakeEmbedder(),
+            store=FakeVectorStore(chunks=[_CHUNK_ABOVE]),
+            llm=CapturingLLM(),
+        )
+        uc.execute("¿Qué es el habeas corpus?")
+        assert "[1]" in calls[0]["system"]
+
+    def test_user_prompt_numbers_fragments(self):
+        calls: list[dict] = []
+
+        class CapturingLLM:
+            def generate(self, prompt: str, system: str = "") -> str:
+                calls.append({"prompt": prompt, "system": system})
+                return "respuesta"
+
+        uc = QueryUseCase(
+            embedder=FakeEmbedder(),
+            store=FakeVectorStore(chunks=[_CHUNK_ABOVE, _CHUNK_ABOVE_2]),
+            llm=CapturingLLM(),
+        )
+        uc.execute("¿Qué es el habeas corpus?")
+        assert "[1]" in calls[0]["prompt"]
+        assert "[2]" in calls[0]["prompt"]
 
     def test_construction_stores_ports(self):
         uc = QueryUseCase(

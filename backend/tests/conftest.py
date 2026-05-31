@@ -30,7 +30,7 @@ class FakeLLMClient:
     def __init__(self, answer: str = "Respuesta de prueba.") -> None:
         self._answer = answer
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, system: str = "") -> str:
         return self._answer
 
 
