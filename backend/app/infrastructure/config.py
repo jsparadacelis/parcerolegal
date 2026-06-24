@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     similarity_threshold: float = 0.45
     embedding_model: str = "jina-embeddings-v3"
     embedding_dimensions: int = 1024
-    llm_model: str = "llama-3.1-70b-versatile"
+    llm_model: str = "llama-3.3-70b-versatile"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1024
     qdrant_collection: str = "parcerolegal"
