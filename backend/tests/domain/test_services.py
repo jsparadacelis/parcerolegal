@@ -16,7 +16,7 @@ class TestFilterByScore:
         assert len(filter_by_score(chunks)) == 2
 
     def test_all_below_threshold(self):
-        chunks = [_chunk(0.30), _chunk(0.50)]
+        chunks = [_chunk(0.30), _chunk(0.40)]
         assert len(filter_by_score(chunks)) == 0
 
     def test_mixed_scores(self):
@@ -29,11 +29,11 @@ class TestFilterByScore:
         assert "low" not in ids
 
     def test_exact_threshold_included(self):
-        chunks = [_chunk(0.65)]
+        chunks = [_chunk(0.45)]
         assert len(filter_by_score(chunks)) == 1
 
     def test_just_below_threshold_excluded(self):
-        chunks = [_chunk(0.649)]
+        chunks = [_chunk(0.449)]
         assert len(filter_by_score(chunks)) == 0
 
     def test_empty_input(self):

@@ -1,20 +1,24 @@
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
-from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
 CHUNKS_PATH = Path("data/processed/chunks.json")
 COLLECTION_NAME = "parcerolegal"
-MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-VECTOR_SIZE = 384
+MODEL_NAME = "jina-embeddings-v3"
+VECTOR_SIZE = 1024
 BATCH_SIZE = 100
+JINA_URL = "https://api.jina.ai/v1/embeddings"
+MAX_RETRIES = 5
+BASE_DELAY = 5.0
 
 
 def load_chunks(chunks_path: Path) -> list[dict]:
@@ -23,9 +27,26 @@ def load_chunks(chunks_path: Path) -> list[dict]:
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    model = SentenceTransformer(MODEL_NAME)
-    embeddings = model.encode(texts, show_progress_bar=True, batch_size=BATCH_SIZE)
-    return embeddings.tolist()
+    headers = {
+        "Authorization": f"Bearer {os.getenv('JINA_API_KEY')}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": MODEL_NAME,
+        "task": "retrieval.passage",
+        "dimensions": VECTOR_SIZE,
+        "input": texts,
+    }
+
+    for attempt in range(MAX_RETRIES):
+        response = requests.post(JINA_URL, json=payload, headers=headers)
+        if response.status_code == 429:
+            time.sleep(BASE_DELAY * (2 ** attempt))
+            continue
+        response.raise_for_status()
+        return [item["embedding"] for item in response.json()["data"]]
+
+    response.raise_for_status()
 
 
 def build_payload(chunk: dict) -> dict:
@@ -74,24 +95,26 @@ def main() -> None:
     chunks = load_chunks(CHUNKS_PATH)
     print(f"  {len(chunks)} chunks cargados")
 
-    print(f"\nGenerando embeddings con {MODEL_NAME}...")
-    texts = [c["text"] for c in chunks]
-    embeddings = generate_embeddings(texts)
-    print(f"  {len(embeddings)} embeddings generados ({VECTOR_SIZE} dimensiones)")
-
     print(f"\nConectando a Qdrant...")
     client = QdrantClient(
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY"),
     )
 
-    print(f"Creando collection '{COLLECTION_NAME}'...")
-    create_collection(client, COLLECTION_NAME)
+    if client.collection_exists(COLLECTION_NAME):
+        print(f"Collection '{COLLECTION_NAME}' ya existe, no se recrea.")
+    else:
+        print(f"Creando collection '{COLLECTION_NAME}'...")
+        create_collection(client, COLLECTION_NAME)
 
-    print(f"Subiendo {len(chunks)} puntos en batches de {BATCH_SIZE}...")
-    for i in range(0, len(chunks), BATCH_SIZE):
+    start_batch = int(os.getenv("START_BATCH", "0"))
+    start_index = start_batch * BATCH_SIZE
+
+    print(f"Generando embeddings con {MODEL_NAME} y subiendo en batches de {BATCH_SIZE} (desde batch {start_batch})...")
+    for i in range(start_index, len(chunks), BATCH_SIZE):
         batch_chunks = chunks[i:i + BATCH_SIZE]
-        batch_embeddings = embeddings[i:i + BATCH_SIZE]
+        batch_texts = [c["text"] for c in batch_chunks]
+        batch_embeddings = generate_embeddings(batch_texts)
         upload_batch(client, COLLECTION_NAME, batch_chunks, batch_embeddings)
         print(f"  Batch {i // BATCH_SIZE + 1}: {len(batch_chunks)} puntos subidos")
 

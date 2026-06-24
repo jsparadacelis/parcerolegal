@@ -7,10 +7,11 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     qdrant_url: str = ""
     qdrant_api_key: str = ""
-    hf_token: str = ""
+    jina_api_key: str = ""
     environment: str = "development"
-    similarity_threshold: float = 0.65
-    embedding_model: str = "ibm-granite/granite-embedding-97m-multilingual-r2"
+    similarity_threshold: float = 0.45
+    embedding_model: str = "jina-embeddings-v3"
+    embedding_dimensions: int = 1024
     llm_model: str = "llama-3.1-70b-versatile"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1024

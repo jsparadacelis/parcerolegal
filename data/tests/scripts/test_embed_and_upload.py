@@ -5,6 +5,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+@pytest.fixture
+def mock_jina_post():
+    with patch("data.scripts.embed_and_upload.requests.post") as mock_post:
+        mock_post.return_value.raise_for_status.return_value = None
+        yield mock_post
+
+
 # ---------------------------------------------------------------------------
 # load_chunks
 # ---------------------------------------------------------------------------
@@ -48,34 +55,48 @@ class TestLoadChunks:
 
 
 class TestGenerateEmbeddings:
-    def test_returns_list_of_lists(self):
+    def test_returns_list_of_lists(self, mock_jina_post):
         from data.scripts.embed_and_upload import generate_embeddings
 
         texts = ["Hola mundo", "Derecho a la salud"]
-        with patch("data.scripts.embed_and_upload.SentenceTransformer") as MockModel:
-            import numpy as np
-            mock_instance = MagicMock()
-            mock_instance.encode.return_value = np.random.rand(2, 384).astype("float32")
-            MockModel.return_value = mock_instance
+        mock_jina_post.return_value.json.return_value = {
+            "data": [{"embedding": [0.1] * 1024}, {"embedding": [0.2] * 1024}]
+        }
 
-            embeddings = generate_embeddings(texts)
+        embeddings = generate_embeddings(texts)
 
         assert len(embeddings) == 2
-        assert len(embeddings[0]) == 384
+        assert len(embeddings[0]) == 1024
 
-    def test_calls_model_encode(self):
+    def test_sends_passage_task_and_texts(self, mock_jina_post):
         from data.scripts.embed_and_upload import generate_embeddings
 
         texts = ["Texto uno", "Texto dos", "Texto tres"]
-        with patch("data.scripts.embed_and_upload.SentenceTransformer") as MockModel:
-            import numpy as np
-            mock_instance = MagicMock()
-            mock_instance.encode.return_value = np.random.rand(3, 384).astype("float32")
-            MockModel.return_value = mock_instance
+        mock_jina_post.return_value.json.return_value = {
+            "data": [{"embedding": [0.1] * 1024} for _ in texts]
+        }
 
-            generate_embeddings(texts)
+        generate_embeddings(texts)
 
-        mock_instance.encode.assert_called_once()
+        sent = mock_jina_post.call_args.kwargs["json"]
+        assert sent["task"] == "retrieval.passage"
+        assert sent["input"] == texts
+
+    def test_retries_on_rate_limit(self, mock_jina_post, monkeypatch):
+        from data.scripts.embed_and_upload import generate_embeddings
+
+        monkeypatch.setattr("data.scripts.embed_and_upload.time.sleep", lambda _: None)
+
+        rate_limited = MagicMock(status_code=429)
+        ok = MagicMock(status_code=200)
+        ok.json.return_value = {"data": [{"embedding": [0.1] * 1024}]}
+        ok.raise_for_status.return_value = None
+        mock_jina_post.side_effect = [rate_limited, ok]
+
+        embeddings = generate_embeddings(["texto"])
+
+        assert len(embeddings) == 1
+        assert mock_jina_post.call_count == 2
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +157,7 @@ class TestCreateCollection:
         create_collection(mock_client, "test_collection")
         mock_client.recreate_collection.assert_called_once()
 
-    def test_uses_384_dimensions_cosine(self):
+    def test_uses_1024_dimensions_cosine(self):
         from data.scripts.embed_and_upload import create_collection
         from qdrant_client.models import Distance, VectorParams
 
@@ -145,7 +166,7 @@ class TestCreateCollection:
 
         call_kwargs = mock_client.recreate_collection.call_args
         vectors_config = call_kwargs.kwargs.get("vectors_config") or call_kwargs[1].get("vectors_config")
-        assert vectors_config.size == 384
+        assert vectors_config.size == 1024
         assert vectors_config.distance == Distance.COSINE
 
 

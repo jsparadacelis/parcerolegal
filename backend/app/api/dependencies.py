@@ -7,8 +7,8 @@ from functools import lru_cache
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.infrastructure.config import Settings
 from backend.app.infrastructure.groq_llm import GroqLLMClient
+from backend.app.infrastructure.jina_embedder import JinaEmbedder
 from backend.app.infrastructure.qdrant_store import QdrantVectorStore
-from backend.app.infrastructure.st_embedder import SentenceTransformerEmbedder
 
 
 @lru_cache
@@ -20,7 +20,11 @@ def get_settings() -> Settings:
 def get_use_case() -> QueryUseCase:
     settings = get_settings()
     return QueryUseCase(
-        embedder=SentenceTransformerEmbedder(model_name=settings.embedding_model, hf_token=settings.hf_token),
+        embedder=JinaEmbedder(
+            api_key=settings.jina_api_key,
+            model=settings.embedding_model,
+            dimensions=settings.embedding_dimensions,
+        ),
         store=QdrantVectorStore(
             url=settings.qdrant_url,
             api_key=settings.qdrant_api_key,

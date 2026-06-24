@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from backend.app.domain.entities import RetrievedChunk
 
-SIMILARITY_THRESHOLD = 0.65
+SIMILARITY_THRESHOLD = 0.45
 
 
 def filter_by_score(
