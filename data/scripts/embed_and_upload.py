@@ -73,6 +73,11 @@ def create_collection(client: QdrantClient, collection_name: str) -> None:
         collection_name=collection_name,
         vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
     )
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="sentencia_id",
+        field_schema="keyword",
+    )
 
 
 def upload_batch(

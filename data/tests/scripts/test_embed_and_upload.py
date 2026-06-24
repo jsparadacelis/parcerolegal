@@ -157,6 +157,18 @@ class TestCreateCollection:
         create_collection(mock_client, "test_collection")
         mock_client.recreate_collection.assert_called_once()
 
+    def test_creates_sentencia_id_keyword_index(self):
+        from data.scripts.embed_and_upload import create_collection
+
+        mock_client = MagicMock()
+        create_collection(mock_client, "test_collection")
+
+        mock_client.create_payload_index.assert_called_once_with(
+            collection_name="test_collection",
+            field_name="sentencia_id",
+            field_schema="keyword",
+        )
+
     def test_uses_1024_dimensions_cosine(self):
         from data.scripts.embed_and_upload import create_collection
         from qdrant_client.models import Distance, VectorParams
