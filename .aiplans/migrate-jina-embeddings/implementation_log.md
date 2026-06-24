@@ -29,3 +29,14 @@
   (con margen amplio sobre el ruido fuera de alcance). Tests de
   `test_services.py` actualizados a los nuevos valores límite. Suite completa:
   146 tests pasando.
+- 2026-06-24: Deploy a producción (Railway, servicio `parcerolegal`).
+  `JINA_API_KEY` ya estaba configurada en Railway. Redeploy inicial dejó
+  `/api/health` en 200 pero `/api/query` en 500: `QDRANT_URL` en Railway
+  estaba corrupta (`ttps://...`, sin la "h" inicial) — corregida. Segundo
+  redeploy reveló un segundo problema, no relacionado con Jina: Groq
+  descontinuó `llama-3.1-70b-versatile` (`model_decommissioned`). Actualizado
+  a `llama-3.3-70b-versatile` (sucesor directo, mismo tamaño) en
+  `backend/app/infrastructure/config.py`. Tercer redeploy: `/api/health` y
+  `/api/query` responden 200 end-to-end, con fuentes citadas correctamente
+  (ej. T-760-08, C-239-97) y `out_of_scope: false`. **Migración completa y
+  verificada en producción.**
