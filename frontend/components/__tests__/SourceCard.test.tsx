@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { SourceCard } from '../SourceCard'
+import type { Source } from '@/lib/types'
 
 describe('SourceCard', () => {
-  const mockSource = {
+  const mockSource: Source = {
+    chunk_id: 'c1',
+    source_type: 'constitucion',
     title: 'Constitución Política - Artículo 15',
-    type: 'constitución' as const,
-    excerpt: 'Todas las personas tienen derecho a su intimidad personal...',
-    similarity: 0.89,
+    url: 'https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=4125#15',
   }
 
   it('displays source title', () => {
@@ -15,41 +16,24 @@ describe('SourceCard', () => {
     expect(screen.getByText('Constitución Política - Artículo 15')).toBeInTheDocument()
   })
 
-  it('shows excerpt preview', () => {
+  it('links to the source url', () => {
     render(<SourceCard source={mockSource} />)
 
-    expect(
-      screen.getByText(/Todas las personas tienen derecho/i)
-    ).toBeInTheDocument()
+    expect(screen.getByRole('link')).toHaveAttribute('href', mockSource.url)
   })
 
-  it('displays similarity score as percentage', () => {
+  it('opens the link in a new tab safely', () => {
     render(<SourceCard source={mockSource} />)
 
-    expect(screen.getByText('89%')).toBeInTheDocument()
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('applies constitution styling for constitution type', () => {
-    const { container } = render(<SourceCard source={mockSource} />)
+  it('renders for sentencia sources too', () => {
+    const sentenciaSource: Source = { ...mockSource, source_type: 'sentencia', title: 'T-760-08' }
+    render(<SourceCard source={sentenciaSource} />)
 
-    expect(container.querySelector('.border-terra\\/20')).toBeInTheDocument()
-  })
-
-  it('applies sentencia styling for sentencia type', () => {
-    const sentenciaSource = { ...mockSource, type: 'sentencia' as const }
-    const { container } = render(<SourceCard source={sentenciaSource} />)
-
-    expect(container.querySelector('.border-ok\\/30')).toBeInTheDocument()
-  })
-
-  it('truncates long excerpts with ellipsis', () => {
-    const longSource = {
-      ...mockSource,
-      excerpt: 'A'.repeat(200),
-    }
-    const { container } = render(<SourceCard source={longSource} />)
-
-    const excerptElement = container.querySelector('[data-testid="source-excerpt"]')
-    expect(excerptElement).toHaveClass('line-clamp-3')
+    expect(screen.getByText('T-760-08')).toBeInTheDocument()
   })
 })

@@ -1,14 +1,15 @@
-export type SourceType = 'constitución' | 'sentencia'
+export type SourceType = 'constitucion' | 'sentencia'
 
 export interface Source {
+  chunk_id: string
+  source_type: SourceType
   title: string
-  type: SourceType
-  excerpt: string
-  similarity: number
+  url: string
 }
 
 export interface QueryResponse {
   answer: string
   sources: Source[]
-  processing_time_ms?: number
+  out_of_scope: boolean
+  processing_time_ms: number
 }

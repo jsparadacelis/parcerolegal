@@ -7,12 +7,14 @@ describe('ResultPanel', () => {
     answer: 'Según el **Artículo 15** de la Constitución...',
     sources: [
       {
+        chunk_id: 'c1',
+        source_type: 'constitucion',
         title: 'Constitución Política - Artículo 15',
-        type: 'constitución',
-        excerpt: 'Todas las personas tienen derecho a su intimidad personal...',
-        similarity: 0.89,
+        url: 'https://example.com/art15',
       },
     ],
+    out_of_scope: false,
+    processing_time_ms: 100,
   }
 
   it('renders the answer text', () => {
@@ -39,18 +41,20 @@ describe('ResultPanel', () => {
       answer: 'Test answer',
       sources: [
         {
+          chunk_id: 'c1',
+          source_type: 'constitucion',
           title: 'Source 1',
-          type: 'constitución',
-          excerpt: 'Excerpt 1',
-          similarity: 0.9,
+          url: 'https://example.com/1',
         },
         {
+          chunk_id: 'c2',
+          source_type: 'sentencia',
           title: 'Source 2',
-          type: 'sentencia',
-          excerpt: 'Excerpt 2',
-          similarity: 0.8,
+          url: 'https://example.com/2',
         },
       ],
+      out_of_scope: false,
+      processing_time_ms: 100,
     }
 
     render(<ResultPanel response={multiSourceResponse} />)
@@ -63,6 +67,8 @@ describe('ResultPanel', () => {
     const outOfScopeResponse: QueryResponse = {
       answer: 'Lo siento, tu pregunta está fuera del alcance...',
       sources: [],
+      out_of_scope: true,
+      processing_time_ms: 50,
     }
 
     render(<ResultPanel response={outOfScopeResponse} />)
@@ -76,6 +82,8 @@ describe('ResultPanel', () => {
     const outOfScopeResponse: QueryResponse = {
       answer: 'Out of scope',
       sources: [],
+      out_of_scope: true,
+      processing_time_ms: 50,
     }
 
     render(<ResultPanel response={outOfScopeResponse} />)

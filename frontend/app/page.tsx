@@ -4,21 +4,30 @@ import { useState } from 'react'
 import { SearchBox } from '@/components/SearchBox'
 import { LoadingSkeleton } from '@/components/LoadingSkeleton'
 import { ResultPanel } from '@/components/ResultPanel'
-import { simulateQuery, EXAMPLE_QUERY } from '@/lib/mockData'
+import { ErrorState } from '@/components/ErrorState'
+import { queryLegal, ApiError } from '@/lib/api'
 import type { QueryResponse } from '@/lib/types'
+
+const EXAMPLE_QUERY = '¿Puedo grabar una llamada sin permiso de la otra persona?'
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [response, setResponse] = useState<QueryResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (query: string) => {
     setIsLoading(true)
     setResponse(null)
+    setError(null)
 
-    const result = await simulateQuery(query)
-
-    setResponse(result)
-    setIsLoading(false)
+    try {
+      const result = await queryLegal(query)
+      setResponse(result)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Algo salió mal. Intenta de nuevo.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleExampleClick = () => {
@@ -49,7 +58,7 @@ export default function Home() {
       {/* Main */}
       <main className="container mx-auto max-w-3xl px-4 py-12">
         {/* Hero */}
-        {!response && !isLoading && (
+        {!response && !isLoading && !error && (
           <div className="mb-10 text-center">
             <h1 className="mb-3 text-4xl font-bold tracking-tight text-ink">
               tu derecho, claro.
@@ -65,7 +74,7 @@ export default function Home() {
         <SearchBox onSubmit={handleSubmit} isLoading={isLoading} />
 
         {/* Example */}
-        {!response && !isLoading && (
+        {!response && !isLoading && !error && (
           <div className="mt-5 text-center">
             <button
               onClick={handleExampleClick}
@@ -78,6 +87,9 @@ export default function Home() {
 
         {/* Loading */}
         {isLoading && <LoadingSkeleton />}
+
+        {/* Error */}
+        {error && !isLoading && <ErrorState message={error} />}
 
         {/* Results */}
         {response && <ResultPanel response={response} />}

@@ -38,9 +38,9 @@ export function ResultPanel({ response }: ResultPanelProps) {
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-3">
               Fuentes
             </h3>
-            <div className="space-y-3">
-              {response.sources.map((source, index) => (
-                <SourceCard key={index} source={source} />
+            <div className="flex flex-wrap gap-1.5">
+              {response.sources.map((source) => (
+                <SourceCard key={source.chunk_id} source={source} />
               ))}
             </div>
           </div>
