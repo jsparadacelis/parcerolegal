@@ -12,7 +12,12 @@ class Embedder(Protocol):
 
 
 class VectorStore(Protocol):
-    def search(self, embedding: list[float], top_k: int = 5) -> list[RetrievedChunk]: ...
+    def search(
+        self,
+        embedding: list[float],
+        top_k: int = 5,
+        sentencia_id: str | None = None,
+    ) -> list[RetrievedChunk]: ...
 
 
 class LLMClient(Protocol):

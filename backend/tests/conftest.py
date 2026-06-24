@@ -15,12 +15,19 @@ class FakeEmbedder:
 
 
 class FakeVectorStore:
-    """Returns pre-configured chunks."""
+    """Returns pre-configured chunks. Records the last sentencia_id it was called with."""
 
     def __init__(self, chunks: list[RetrievedChunk] | None = None) -> None:
         self._chunks = chunks or []
+        self.last_sentencia_id: str | None = None
 
-    def search(self, embedding: list[float], top_k: int = 5) -> list[RetrievedChunk]:
+    def search(
+        self,
+        embedding: list[float],
+        top_k: int = 5,
+        sentencia_id: str | None = None,
+    ) -> list[RetrievedChunk]:
+        self.last_sentencia_id = sentencia_id
         return self._chunks[:top_k]
 
 

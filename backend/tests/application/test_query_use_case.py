@@ -196,6 +196,37 @@ class TestQueryUseCaseExecute:
         assert "[1]" in calls[0]["prompt"]
         assert "[2]" in calls[0]["prompt"]
 
+    def test_passes_extracted_sentencia_id_to_store(self):
+        store = FakeVectorStore(chunks=[_SENTENCIA_CHUNK])
+        uc = QueryUseCase(embedder=FakeEmbedder(), store=store, llm=FakeLLMClient())
+
+        uc.execute("¿Qué dice la sentencia T-760 de 2008?")
+
+        assert store.last_sentencia_id == "T-760-08"
+
+    def test_sentencia_match_bypasses_similarity_threshold(self):
+        low_score_but_matched = RetrievedChunk(
+            chunk_id="c5",
+            text="Texto de la sentencia T-760.",
+            score=0.20,
+            source_type="sentencia",
+            metadata={"sentencia_id": "T-760-08", "source_url": "http://corte.gov.co/T-760"},
+        )
+        store = FakeVectorStore(chunks=[low_score_but_matched])
+        uc = QueryUseCase(embedder=FakeEmbedder(), store=store, llm=FakeLLMClient())
+
+        result = uc.execute("¿Qué dice la sentencia T-760 de 2008?")
+
+        assert result.out_of_scope is False
+
+    def test_passes_none_when_question_has_no_sentencia_reference(self):
+        store = FakeVectorStore(chunks=[_CHUNK_ABOVE])
+        uc = QueryUseCase(embedder=FakeEmbedder(), store=store, llm=FakeLLMClient())
+
+        uc.execute("¿Qué es el habeas corpus?")
+
+        assert store.last_sentencia_id is None
+
     def test_construction_stores_ports(self):
         uc = QueryUseCase(
             embedder=FakeEmbedder(),

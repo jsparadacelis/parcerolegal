@@ -123,3 +123,21 @@ class TestQdrantVectorStoreSearch:
         mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
 
         assert store.search([0.1] * 384) == []
+
+    def test_no_filter_sent_when_sentencia_id_omitted(self, store, mock_http):
+        import json
+        mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
+
+        store.search([0.1] * 384)
+
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert "filter" not in sent
+
+    def test_sends_sentencia_id_filter(self, store, mock_http):
+        import json
+        mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
+
+        store.search([0.1] * 384, sentencia_id="T-760-08")
+
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert sent["filter"] == {"must": [{"key": "sentencia_id", "match": {"value": "T-760-08"}}]}

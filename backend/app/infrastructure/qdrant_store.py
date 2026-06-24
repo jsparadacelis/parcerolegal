@@ -12,12 +12,17 @@ class QdrantVectorStore:
         self._url = f"{url}/collections/{collection}/points/search"
         self._headers = {"api-key": api_key, "Content-Type": "application/json"}
 
-    def search(self, embedding: list[float], top_k: int = 5) -> list[RetrievedChunk]:
-        response = requests.post(
-            self._url,
-            headers=self._headers,
-            json={"vector": embedding, "limit": top_k, "with_payload": True},
-        )
+    def search(
+        self,
+        embedding: list[float],
+        top_k: int = 5,
+        sentencia_id: str | None = None,
+    ) -> list[RetrievedChunk]:
+        payload = {"vector": embedding, "limit": top_k, "with_payload": True}
+        if sentencia_id:
+            payload["filter"] = {"must": [{"key": "sentencia_id", "match": {"value": sentencia_id}}]}
+
+        response = requests.post(self._url, headers=self._headers, json=payload)
         response.raise_for_status()
         return [self._to_chunk(point) for point in response.json()["result"]]
 

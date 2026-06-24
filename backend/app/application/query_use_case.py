@@ -6,7 +6,7 @@ import time
 
 from backend.app.domain.entities import QueryResult, RetrievedChunk, Source
 from backend.app.domain.ports import Embedder, LLMClient, VectorStore
-from backend.app.domain.services import filter_by_score, is_out_of_scope
+from backend.app.domain.services import extract_sentencia_id, filter_by_score, is_out_of_scope
 
 _OUT_OF_SCOPE_ANSWER = (
     "Tu pregunta está fuera del alcance de la legislación colombiana disponible. "
@@ -49,8 +49,9 @@ class QueryUseCase:
         start = time.time()
 
         embedding = self._embedder.embed(question)
-        chunks = self._store.search(embedding, top_k=5)
-        filtered = filter_by_score(chunks)
+        sentencia_id = extract_sentencia_id(question)
+        chunks = self._store.search(embedding, top_k=5, sentencia_id=sentencia_id)
+        filtered = chunks if sentencia_id and chunks else filter_by_score(chunks)
 
         elapsed_ms = lambda: (time.time() - start) * 1000
 
