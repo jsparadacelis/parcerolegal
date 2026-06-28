@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends
 
 from backend.app.api.dependencies import get_use_case
 from backend.app.api.schemas import QueryRequest, QueryResponse, SourceResponse
 from backend.app.application.query_use_case import QueryUseCase
+
+logger = logging.getLogger("parcerolegal")
 
 router = APIRouter()
 
@@ -17,6 +21,12 @@ def query(
     use_case: QueryUseCase = Depends(get_use_case),
 ) -> QueryResponse:
     result = use_case.execute(request.question)
+    logger.info(
+        "query question_len=%d out_of_scope=%s elapsed_ms=%.0f",
+        len(request.question),
+        result.out_of_scope,
+        result.processing_time_ms,
+    )
     return QueryResponse(
         answer=result.answer,
         sources=[

@@ -23,6 +23,6 @@ class JinaEmbedder:
             "dimensions": self._dimensions,
             "input": [text],
         }
-        response = requests.post(_JINA_URL, json=payload, headers=self._headers)
+        response = requests.post(_JINA_URL, json=payload, headers=self._headers, timeout=10)
         response.raise_for_status()
         return response.json()["data"][0]["embedding"]

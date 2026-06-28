@@ -1,7 +1,10 @@
 """Integration tests for API endpoints using TestClient."""
 from __future__ import annotations
 
+import logging
+
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_settings, get_use_case
@@ -10,6 +13,12 @@ from backend.app.application.query_use_case import QueryUseCase
 from backend.app.domain.entities import RetrievedChunk
 from backend.app.infrastructure.config import Settings
 from backend.tests.conftest import FakeEmbedder, FakeLLMClient, FakeVectorStore
+
+
+class TimeoutLLMClient:
+    def generate(self, prompt: str, system: str = "") -> str:
+        raise requests.exceptions.Timeout("LLM timed out")
+
 
 _CHUNK = RetrievedChunk(
     chunk_id="c1",
@@ -139,3 +148,47 @@ class TestCORS:
             },
         )
         assert response.headers.get("access-control-allow-origin") == "*"
+
+
+@pytest.fixture
+def timeout_use_case() -> QueryUseCase:
+    return QueryUseCase(
+        embedder=FakeEmbedder(),
+        store=FakeVectorStore(chunks=[_CHUNK]),
+        llm=TimeoutLLMClient(),
+    )
+
+
+@pytest.fixture
+def timeout_client(test_settings: Settings, timeout_use_case: QueryUseCase) -> TestClient:
+    app.dependency_overrides[get_settings] = lambda: test_settings
+    app.dependency_overrides[get_use_case] = lambda: timeout_use_case
+    with TestClient(app, raise_server_exceptions=False) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+class TestTimeoutHandling:
+    def test_timeout_returns_503(self, timeout_client: TestClient):
+        response = timeout_client.post("/api/query", json={"question": "¿Qué es el habeas corpus?"})
+        assert response.status_code == 503
+
+    def test_timeout_response_has_detail(self, timeout_client: TestClient):
+        data = timeout_client.post("/api/query", json={"question": "¿Qué es el habeas corpus?"}).json()
+        assert "detail" in data
+
+
+class TestInputValidation:
+    def test_whitespace_only_question_returns_422(self, client: TestClient):
+        assert client.post("/api/query", json={"question": "   "}).status_code == 422
+
+    def test_question_is_stripped_before_processing(self, client: TestClient):
+        response = client.post("/api/query", json={"question": "  ¿Qué es el habeas corpus?  "})
+        assert response.status_code == 200
+
+
+class TestRequestLogging:
+    def test_query_is_logged(self, client: TestClient, caplog: pytest.LogCaptureFixture):
+        with caplog.at_level(logging.INFO, logger="parcerolegal"):
+            client.post("/api/query", json={"question": "¿Qué es el habeas corpus?"})
+        assert any("query" in r.message.lower() for r in caplog.records)

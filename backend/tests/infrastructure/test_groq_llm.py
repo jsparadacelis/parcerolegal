@@ -6,6 +6,7 @@ import json
 from unittest.mock import patch
 
 import pytest
+import requests
 import responses
 
 from backend.app.infrastructure.groq_llm import GroqLLMClient
@@ -121,3 +122,9 @@ class TestGroqLLMClientGenerate:
 
         delays = [c.args[0] for c in mock_sleep.call_args_list]
         assert delays[1] > delays[0]
+
+    def test_raises_on_timeout(self, client, mock_http):
+        mock_http.add(responses.POST, _GROQ_URL, body=requests.exceptions.Timeout())
+
+        with pytest.raises(requests.exceptions.Timeout):
+            client.generate("pregunta")

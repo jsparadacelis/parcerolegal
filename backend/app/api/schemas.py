@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=500)
+
+    @field_validator("question", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class SourceResponse(BaseModel):
@@ -26,3 +33,7 @@ class QueryResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     environment: str
+
+
+class ErrorResponse(BaseModel):
+    detail: str

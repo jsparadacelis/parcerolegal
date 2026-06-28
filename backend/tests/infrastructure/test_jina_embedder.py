@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 import pytest
+import requests
 import responses
 
 from backend.app.infrastructure.jina_embedder import JinaEmbedder
@@ -73,3 +74,9 @@ class TestJinaEmbedder:
 
         sent = json.loads(mock_http.calls[0].request.body)
         assert sent["input"] == ["¿Cuáles son los derechos fundamentales?"]
+
+    def test_raises_on_timeout(self, embedder, mock_http):
+        mock_http.add(responses.POST, _EMBED_URL, body=requests.exceptions.Timeout())
+
+        with pytest.raises(requests.exceptions.Timeout):
+            embedder.embed("texto")

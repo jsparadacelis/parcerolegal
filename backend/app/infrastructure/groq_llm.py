@@ -37,7 +37,7 @@ class GroqLLMClient:
         last_response: requests.Response | None = None
 
         for attempt in range(_MAX_RETRIES):
-            response = requests.post(_GROQ_URL, json=payload, headers=self._headers)
+            response = requests.post(_GROQ_URL, json=payload, headers=self._headers, timeout=40)
             if response.status_code == 429:
                 last_response = response
                 time.sleep(_BASE_DELAY * (2 ** attempt))

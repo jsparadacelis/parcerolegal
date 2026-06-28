@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI
+import logging
+import time
+
+import requests
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.app.api.dependencies import get_settings
 from backend.app.api.routes import router
 from backend.app.api.schemas import HealthResponse
 from backend.app.infrastructure.config import Settings
+
+logger = logging.getLogger("parcerolegal")
 
 app = FastAPI(
     title="Parcerolegal API",
@@ -23,6 +30,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed_ms = (time.time() - start) * 1000
+    logger.info("%s %s %s %.0fms", request.method, request.url.path, response.status_code, elapsed_ms)
+    return response
+
+
+@app.exception_handler(requests.exceptions.Timeout)
+async def timeout_handler(request: Request, exc: requests.exceptions.Timeout) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "El servicio tardó demasiado en responder. Por favor intenta de nuevo."},
+    )
+
 
 app.include_router(router)
 
