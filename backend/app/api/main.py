@@ -49,6 +49,15 @@ async def timeout_handler(request: Request, exc: requests.exceptions.Timeout) ->
     )
 
 
+@app.exception_handler(Exception)
+async def generic_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("unhandled exception: %s: %s", type(exc).__name__, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
+
+
 app.include_router(router)
 
 
