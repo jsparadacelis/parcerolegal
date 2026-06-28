@@ -34,11 +34,17 @@ export default function Home() {
     handleSubmit(EXAMPLE_QUERY)
   }
 
+  const handleReset = () => {
+    setResponse(null)
+    setError(null)
+    setIsLoading(false)
+  }
+
   return (
     <div className="min-h-screen bg-surface-2">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface">
-        <div className="flex items-center gap-2.5">
+        <button onClick={handleReset} className="flex items-center gap-2.5 cursor-pointer">
           <div className="w-7 h-7 bg-terra rounded-[7px] flex items-center justify-center flex-shrink-0">
             <svg className="text-white w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3L4 9v12h16V9L12 3z" />
@@ -49,7 +55,7 @@ export default function Home() {
           <span className="text-base font-bold tracking-tight text-ink">
             parcero<span className="font-normal text-ink-3">legal</span>
           </span>
-        </div>
+        </button>
         <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-2.5 py-1 rounded-full">
           No reemplaza un abogado
         </span>
