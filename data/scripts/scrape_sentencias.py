@@ -25,6 +25,22 @@ SENTENCIAS_LIST = [
     {"id": "T-881-02", "url": "https://www.corteconstitucional.gov.co/relatoria/2002/T-881-02.htm", "tema": "Dignidad humana"},
     {"id": "C-577-11", "url": "https://www.corteconstitucional.gov.co/relatoria/2011/C-577-11.htm", "tema": "Parejas del mismo sexo"},
     {"id": "T-398-19", "url": "https://www.corteconstitucional.gov.co/relatoria/2019/T-398-19.htm", "tema": "Libertad de expresión"},
+    # Batch 3 — ampliar cobertura temática
+    {"id": "T-414-92", "url": "https://www.corteconstitucional.gov.co/relatoria/1992/T-414-92.htm", "tema": "Intimidad y privacidad"},
+    {"id": "C-1011-08", "url": "https://www.corteconstitucional.gov.co/relatoria/2008/C-1011-08.htm", "tema": "Habeas data / protección de datos personales"},
+    {"id": "T-426-92", "url": "https://www.corteconstitucional.gov.co/relatoria/1992/T-426-92.htm", "tema": "Mínimo vital"},
+    {"id": "T-002-92", "url": "https://www.corteconstitucional.gov.co/relatoria/1992/T-002-92.htm", "tema": "Derecho a la educación"},
+    {"id": "T-001-92", "url": "https://www.corteconstitucional.gov.co/relatoria/1992/T-001-92.htm", "tema": "Acción de tutela y debido proceso"},
+    {"id": "C-024-94", "url": "https://www.corteconstitucional.gov.co/relatoria/1994/C-024-94.htm", "tema": "Libertad personal y captura"},
+    {"id": "T-622-16", "url": "https://www.corteconstitucional.gov.co/relatoria/2016/T-622-16.htm", "tema": "Medio ambiente — Río Atrato"},
+    {"id": "T-967-14", "url": "https://www.corteconstitucional.gov.co/relatoria/2014/T-967-14.htm", "tema": "Violencia intrafamiliar y protección a la mujer"},
+    {"id": "SU-070-13", "url": "https://www.corteconstitucional.gov.co/relatoria/2013/su070-13.htm", "tema": "Estabilidad laboral reforzada mujer embarazada"},
+    {"id": "T-533-92", "url": "https://www.corteconstitucional.gov.co/relatoria/1992/T-533-92.htm", "tema": "Seguridad social / pensiones"},
+    {"id": "T-083-03", "url": "https://www.corteconstitucional.gov.co/relatoria/2003/T-083-03.htm", "tema": "Vivienda digna y arrendamiento"},
+    {"id": "C-370-06", "url": "https://www.corteconstitucional.gov.co/relatoria/2006/C-370-06.htm", "tema": "Justicia y Paz / derechos de víctimas"},
+    {"id": "T-138-12", "url": "https://www.corteconstitucional.gov.co/relatoria/2012/T-138-12.htm", "tema": "Pensión de invalidez"},
+    {"id": "T-120-24", "url": "https://www.corteconstitucional.gov.co/relatoria/2024/T-120-24.htm", "tema": "Derechos fundamentales — sentencia reciente"},
+    {"id": "C-481-98", "url": "https://www.corteconstitucional.gov.co/relatoria/1998/C-481-98.htm", "tema": "Autonomía universitaria y educación"},
 ]
 
 # Section heading patterns — match Roman numerals or keywords

@@ -28,8 +28,15 @@ def test_sentencias_list_has_required_fields():
         assert not missing, f"Entrada {entry.get('id')} le faltan campos: {missing}"
 
 
-def test_sentencias_list_has_at_least_10():
-    assert len(SENTENCIAS_LIST) >= 10
+def test_sentencias_list_has_at_least_25():
+    assert len(SENTENCIAS_LIST) >= 25
+
+
+def test_sentencias_list_urls_point_to_corteconstitucional():
+    for entry in SENTENCIAS_LIST:
+        assert "corteconstitucional.gov.co" in entry["url"], (
+            f"{entry['id']} tiene URL inválida: {entry['url']}"
+        )
 
 
 def test_sentencias_list_ids_are_unique():
