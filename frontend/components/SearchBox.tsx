@@ -37,7 +37,7 @@ export function SearchBox({ onSubmit, isLoading = false }: SearchBoxProps) {
         <button
           type="submit"
           disabled={isLoading}
-          className="bg-terra hover:bg-terra-mid active:bg-ink text-white text-xs font-bold px-3.5 py-2 min-h-[36px] rounded-lg transition-colors duration-150 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-terra hover:bg-terra-mid active:bg-ink text-white text-xs font-bold px-3.5 py-2 min-h-[44px] rounded-lg transition-colors duration-150 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2"
         >
           Preguntar
         </button>

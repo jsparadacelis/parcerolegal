@@ -44,7 +44,7 @@ export default function Home() {
     <div className="min-h-screen bg-surface-2">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface">
-        <button onClick={handleReset} className="flex items-center gap-2.5 cursor-pointer">
+        <button onClick={handleReset} className="flex items-center gap-2.5 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2">
           <div className="w-7 h-7 bg-terra rounded-[7px] flex items-center justify-center flex-shrink-0">
             <svg className="text-white w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3L4 9v12h16V9L12 3z" />
@@ -84,7 +84,7 @@ export default function Home() {
           <div className="mt-5 text-center">
             <button
               onClick={handleExampleClick}
-              className="text-sm text-ink-3 hover:text-terra transition-colors duration-150"
+              className="text-sm text-ink-3 hover:text-terra transition-colors duration-150 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2"
             >
               Prueba: &quot;{EXAMPLE_QUERY}&quot;
             </button>

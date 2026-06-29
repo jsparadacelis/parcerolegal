@@ -12,7 +12,7 @@ export function ResultPanel({ response }: ResultPanelProps) {
 
   return (
     <div className="mt-8">
-      <div className="bg-terra-pale rounded-2xl p-5 border border-terra-border">
+      <div className="bg-terra-pale rounded-2xl p-4 sm:p-5 border border-terra-border">
         {/* Answer */}
         <div className="mb-4">
           <ReactMarkdown
