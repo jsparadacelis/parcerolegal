@@ -106,8 +106,17 @@ export default function Home() {
         <div className="container mx-auto px-4 text-center text-sm text-ink-3">
           <p>
             Beta · Los resultados se basan en IA y pueden contener errores ·{' '}
-            <a href="#" className="text-terra hover:underline underline-offset-2">
+            <a href="/about" className="text-terra hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded">
               Acerca de
+            </a>
+            {' '}·{' '}
+            <a
+              href="https://github.com/jsparadacelis/parcerolegal/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-terra hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded"
+            >
+              Reportar error
             </a>
           </p>
         </div>
