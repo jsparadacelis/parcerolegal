@@ -1,10 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "parcerolegal — tu derecho, claro",
   description: "Motor de búsqueda legal gratuito para Colombia. Encuentra respuestas basadas en la Constitución y jurisprudencia.",
 };
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
 
 export default function RootLayout({
   children,
