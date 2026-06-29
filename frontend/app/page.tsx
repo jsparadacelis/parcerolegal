@@ -8,7 +8,7 @@ import { ErrorState } from '@/components/ErrorState'
 import { queryLegal, ApiError } from '@/lib/api'
 import type { QueryResponse } from '@/lib/types'
 
-const EXAMPLE_QUERY = '¿Puedo grabar una llamada sin permiso de la otra persona?'
+const EXAMPLE_QUERY = '¿Qué es el habeas corpus y cómo lo puedo usar?'
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
