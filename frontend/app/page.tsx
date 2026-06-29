@@ -62,14 +62,14 @@ export default function Home() {
       </nav>
 
       {/* Main */}
-      <main className="container mx-auto max-w-3xl px-4 py-12">
+      <main className="container mx-auto max-w-3xl px-4 py-8 sm:py-12">
         {/* Hero */}
         {!response && !isLoading && !error && (
-          <div className="mb-10 text-center">
-            <h1 className="mb-3 text-4xl font-bold tracking-tight text-ink">
+          <div className="mb-8 sm:mb-10 text-center">
+            <h1 className="mb-3 text-3xl sm:text-4xl font-bold tracking-tight text-ink">
               tu derecho, claro.
             </h1>
-            <p className="mb-8 text-lg text-ink-2 font-normal">
+            <p className="mb-6 sm:mb-8 text-base sm:text-lg text-ink-2 font-normal">
               Consultá la Constitución y jurisprudencia colombiana en lenguaje normal.
               Gratis, sin traje, sin protocolo.
             </p>
