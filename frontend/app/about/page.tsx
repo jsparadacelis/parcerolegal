@@ -41,7 +41,7 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">¿Qué es esto?</h2>
           <p className="text-sm leading-relaxed text-ink-2">
-            parcerolegal es un motor de búsqueda legal gratuito para Colombia. Le podés hacer
+            parcerolegal es un motor de búsqueda legal gratuito para Colombia. Le puedes hacer
             preguntas en lenguaje normal — sin jerga, sin formalismos — y te responde con
             información real de la Constitución Política y sentencias de la Corte Constitucional.
             No hay trampa: cada respuesta incluye las fuentes donde fue tomada.
@@ -91,7 +91,7 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">¿Cómo funciona?</h2>
           <p className="text-sm leading-relaxed text-ink-2">
-            Cuando hacés una pregunta, el sistema busca los fragmentos más relevantes
+            Cuando haces una pregunta, el sistema busca los fragmentos más relevantes
             del corpus legal usando búsqueda semántica (no por palabras clave exactas).
             Con esos fragmentos como contexto, un modelo de lenguaje genera una respuesta
             en español claro. Si no encuentra nada suficientemente relevante, lo dice
@@ -115,7 +115,7 @@ export default function AboutPage() {
             </p>
             <p>
               Para decisiones legales que te afecten — una tutela, un contrato, un proceso
-              judicial — consultá siempre con un abogado. En Colombia podés acceder a
+              judicial — consulta siempre con un abogado. En Colombia puedes acceder a
               consultorios jurídicos gratuitos en universidades y en la Defensoría del Pueblo.
             </p>
           </div>
@@ -127,8 +127,8 @@ export default function AboutPage() {
           <p className="text-sm leading-relaxed text-ink-2">
             parcerolegal es un proyecto independiente, sin ánimo de lucro, construido con
             la convicción de que el acceso a la información legal no debería ser exclusivo
-            de quienes pueden pagar un abogado. Está en beta — si encontrás errores o tenés
-            sugerencias, los podés reportar en{' '}
+            de quienes pueden pagar un abogado. Está en beta — si encuentras errores o tienes
+            sugerencias, los puedes reportar en{' '}
             <a
               href="https://github.com/jsparadacelis/parcerolegal/issues"
               target="_blank"

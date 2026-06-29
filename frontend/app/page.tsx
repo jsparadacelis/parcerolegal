@@ -70,7 +70,7 @@ export default function Home() {
               tu derecho, claro.
             </h1>
             <p className="mb-6 sm:mb-8 text-base sm:text-lg text-ink-2 font-normal">
-              Consultá la Constitución y jurisprudencia colombiana en lenguaje normal.
+              Consulta la Constitución y jurisprudencia colombiana en lenguaje normal.
               Gratis, sin traje, sin protocolo.
             </p>
           </div>
