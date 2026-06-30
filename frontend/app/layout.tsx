@@ -2,8 +2,27 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://parcerolegal.co'),
   title: "parcerolegal — tu derecho, claro",
-  description: "Motor de búsqueda legal gratuito para Colombia. Encuentra respuestas basadas en la Constitución y jurisprudencia.",
+  description: "Motor de búsqueda legal gratuito para Colombia. Consulta la Constitución Política y jurisprudencia de la Corte Constitucional en lenguaje normal. Gratis.",
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'es_CO',
+    url: 'https://parcerolegal.co',
+    siteName: 'parcerolegal',
+    title: 'parcerolegal — tu derecho, claro',
+    description: 'Motor de búsqueda legal gratuito para Colombia. Consulta la Constitución y jurisprudencia en lenguaje normal.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'parcerolegal — tu derecho, claro' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'parcerolegal — tu derecho, claro',
+    description: 'Motor de búsqueda legal gratuito para Colombia. Constitución + jurisprudencia en lenguaje normal.',
+    images: ['/opengraph-image'],
+  },
 };
 
 export const viewport: Viewport = {
