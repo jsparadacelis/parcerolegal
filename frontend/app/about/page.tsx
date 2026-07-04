@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { Logo } from '@/components/Logo'
 
 export const metadata: Metadata = {
   title: 'Acerca de — parcerolegal',
@@ -10,27 +11,15 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-surface-2">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface">
-        <Link href="/" className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2">
-          <div className="w-7 h-7 bg-terra rounded-[7px] flex items-center justify-center flex-shrink-0">
-            <svg className="text-white w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3L4 9v12h16V9L12 3z" />
-              <path d="M9 15l3 3 3-3" />
-              <path d="M12 18V9" />
-            </svg>
-          </div>
-          <span className="text-base font-bold tracking-tight text-ink">
-            parcero<span className="font-normal text-ink-3">legal</span>
-          </span>
+      <nav className="flex items-center px-5 py-3.5 border-b border-border bg-surface">
+        <Link href="/" className="flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label="Volver al inicio">
+          <Logo size={19} />
         </Link>
-        <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-2.5 py-1 rounded-full">
-          No reemplaza un abogado
-        </span>
       </nav>
 
       {/* Content */}
       <main className="container mx-auto max-w-2xl px-4 py-10 sm:py-14">
-        <h1 className="mb-2 text-2xl sm:text-3xl font-bold tracking-tight text-ink">
+        <h1 className="font-display mb-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
           Acerca de parcerolegal
         </h1>
         <p className="mb-10 text-base text-ink-3">
@@ -56,14 +45,14 @@ export default function AboutPage() {
           </p>
           <ul className="mb-3 space-y-2 text-sm text-ink-2">
             <li className="flex items-start gap-2">
-              <span className="mt-0.5 text-terra font-semibold flex-shrink-0">—</span>
+              <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
               <span>
                 <strong className="text-ink font-semibold">Constitución Política de Colombia (1991)</strong>
                 {' '}— los 380 artículos completos.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="mt-0.5 text-terra font-semibold flex-shrink-0">—</span>
+              <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
               <span>
                 <strong className="text-ink font-semibold">25 sentencias de la Corte Constitucional</strong>
                 {' '}— entre ellas T-760/2008 (salud), C-355/2006 (aborto), SU-214/2016
@@ -79,7 +68,7 @@ export default function AboutPage() {
               href="https://www.corteconstitucional.gov.co"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-terra underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded"
+              className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
             >
               corteconstitucional.gov.co
             </a>
@@ -102,7 +91,7 @@ export default function AboutPage() {
         {/* Limitaciones / disclaimer */}
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">Limitaciones importantes</h2>
-          <div className="rounded-r-lg border-l-[3px] border-amber bg-amber-light pl-4 pr-3 py-3 text-sm leading-relaxed text-ink-2">
+          <div className="rounded-r-lg border-l-[3px] border-warn bg-gold-tint pl-4 pr-3 py-3 text-sm leading-relaxed text-ink-2">
             <p className="mb-2">
               <strong className="text-ink font-semibold">parcerolegal no es asesoría jurídica</strong>
               {' '}y no reemplaza a un abogado. Las respuestas son orientativas — pueden
@@ -133,7 +122,7 @@ export default function AboutPage() {
               href="https://github.com/jsparadacelis/parcerolegal/issues"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-terra underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded"
+              className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
             >
               GitHub
             </a>
@@ -143,7 +132,7 @@ export default function AboutPage() {
 
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-terra hover:opacity-75 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2 rounded"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-75 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
         >
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />

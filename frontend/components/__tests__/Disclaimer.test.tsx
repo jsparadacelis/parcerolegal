@@ -2,17 +2,17 @@ import { render, screen } from '@testing-library/react'
 import { Disclaimer } from '../Disclaimer'
 
 describe('Disclaimer', () => {
-  it('displays warning icon', () => {
+  it('displays the orientative notice', () => {
     render(<Disclaimer />)
 
-    expect(screen.getByText(/orientativa/i)).toBeInTheDocument()
+    expect(screen.getByText(/orientativo/i)).toBeInTheDocument()
   })
 
-  it('warns users about information accuracy', () => {
+  it('warns that it does not replace a lawyer', () => {
     render(<Disclaimer />)
 
     expect(
-      screen.getByText(/no reemplaza.*asesoría/i)
+      screen.getByText(/no reemplaza a un abogado/i)
     ).toBeInTheDocument()
   })
 
@@ -20,14 +20,15 @@ describe('Disclaimer', () => {
     render(<Disclaimer />)
 
     expect(
-      screen.getByText(/profesional para tu caso/i)
+      screen.getByText(/consulta a un profesional/i)
     ).toBeInTheDocument()
   })
 
-  it('has amber warning visual styling', () => {
+  it('is styled as an integrated fine-print footer', () => {
     const { container } = render(<Disclaimer />)
     const disclaimer = container.firstChild
 
-    expect(disclaimer).toHaveClass('border-amber')
+    expect(disclaimer).toHaveClass('border-t')
+    expect(disclaimer).toHaveClass('border-border')
   })
 })

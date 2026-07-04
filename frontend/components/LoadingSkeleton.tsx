@@ -1,34 +1,37 @@
 export function LoadingSkeleton() {
   return (
     <div className="mt-8" aria-busy="true" aria-live="polite">
-      <div className="bg-terra-pale rounded-2xl p-4 sm:p-5 border border-terra-border">
-        {/* Answer skeleton */}
-        <div className="mb-4 space-y-2.5">
-          <div className="h-3.5 w-full animate-pulse rounded bg-terra-border" />
-          <div className="h-3.5 w-5/6 animate-pulse rounded bg-terra-border" />
-          <div className="h-3.5 w-full animate-pulse rounded bg-terra-border" />
-          <div className="h-3.5 w-4/6 animate-pulse rounded bg-terra-border" />
-          <div className="h-3.5 w-full animate-pulse rounded bg-terra-border" />
-          <div className="h-3.5 w-3/5 animate-pulse rounded bg-terra-border" />
-        </div>
+      {/* Respuesta del parcero (esqueleto) */}
+      <div className="flex gap-3 items-start">
+        {/* Avatar */}
+        <div className="flex-none w-[34px] h-[34px] rounded-[10px] bg-surface-3 animate-pulse mt-0.5" />
 
-        {/* Sources skeleton */}
-        <div className="mb-4">
-          <div className="mb-2.5 h-3 w-10 animate-pulse rounded bg-terra-border" />
-          <div className="flex flex-wrap gap-1.5">
-            {[80, 112, 64].map((w, i) => (
-              <div
-                key={i}
-                data-testid="source-skeleton"
-                className="h-8 animate-pulse rounded-lg bg-terra-border"
-                style={{ width: w }}
-              />
-            ))}
+        {/* Burbuja de respuesta */}
+        <div className="flex-1 min-w-0 bg-surface border border-border rounded-[4px_16px_16px_16px] px-6 py-[22px]">
+          {/* EN CORTO skeleton */}
+          <div className="bg-surface-3 rounded-[11px] h-[64px] w-full animate-pulse mb-[18px]" />
+
+          {/* Cuerpo skeleton */}
+          <div className="space-y-[9px] mb-[22px]">
+            <div className="h-3.5 w-[90%] animate-pulse rounded-[6px] bg-surface-3" />
+            <div className="h-3.5 w-full animate-pulse rounded-[6px] bg-surface-3" />
+            <div className="h-3.5 w-[70%] animate-pulse rounded-[6px] bg-surface-3" />
+          </div>
+
+          {/* Fuentes skeleton */}
+          <div className="mb-1">
+            <div className="mb-3 h-3 w-14 animate-pulse rounded-[6px] bg-surface-3" />
+            <div className="flex flex-col gap-[9px]">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  data-testid="source-skeleton"
+                  className="h-[52px] w-full animate-pulse rounded-[10px] bg-surface-3"
+                />
+              ))}
+            </div>
           </div>
         </div>
-
-        {/* Disclaimer skeleton */}
-        <div className="h-8 animate-pulse rounded-r-lg bg-terra-border border-l-[3px] border-amber/30" />
       </div>
 
       <p className="mt-4 text-center text-sm text-ink-3">

@@ -10,7 +10,7 @@ export default function Image() {
     (
       <div
         style={{
-          background: '#FFF7F3',
+          background: '#F5F8FE',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -21,38 +21,49 @@ export default function Image() {
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        {/* Logo mark */}
+        {/* Monograma */}
         <div
           style={{
-            width: 80,
-            height: 80,
-            background: '#C2410C',
-            borderRadius: 20,
+            width: 96,
+            height: 96,
+            background: '#14161C',
+            borderRadius: 24,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            position: 'relative',
             marginBottom: 36,
+            fontSize: 62,
+            fontWeight: 800,
+            color: '#FFFFFF',
           }}
         >
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3L4 9v12h16V9L12 3z" />
-            <path d="M9 15l3 3 3-3" />
-            <path d="M12 18V9" />
-          </svg>
+          p
+          <div
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              width: 14,
+              height: 14,
+              borderRadius: 14,
+              background: '#2457D6',
+            }}
+          />
         </div>
 
         {/* Wordmark */}
         <div style={{ display: 'flex', marginBottom: 20 }}>
-          <span style={{ fontSize: 80, fontWeight: 700, color: '#1C1412', letterSpacing: '-3px' }}>
+          <span style={{ fontSize: 80, fontWeight: 800, color: '#14161C', letterSpacing: '-3px' }}>
             parcero
           </span>
-          <span style={{ fontSize: 80, fontWeight: 400, color: '#A08070', letterSpacing: '-3px' }}>
+          <span style={{ fontSize: 80, fontWeight: 800, color: '#2457D6', letterSpacing: '-3px' }}>
             legal
           </span>
         </div>
 
         {/* Tagline */}
-        <div style={{ fontSize: 36, fontWeight: 400, color: '#5C4033', marginBottom: 48 }}>
+        <div style={{ fontSize: 36, fontWeight: 500, color: '#3A3F49', marginBottom: 48 }}>
           tu derecho, claro.
         </div>
 
@@ -60,7 +71,7 @@ export default function Image() {
         <div
           style={{
             fontSize: 24,
-            color: '#A08070',
+            color: '#6A7180',
             textAlign: 'center',
             maxWidth: 820,
             lineHeight: 1.5,

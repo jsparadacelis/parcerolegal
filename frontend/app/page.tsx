@@ -5,6 +5,7 @@ import { SearchBox } from '@/components/SearchBox'
 import { LoadingSkeleton } from '@/components/LoadingSkeleton'
 import { ResultPanel } from '@/components/ResultPanel'
 import { ErrorState } from '@/components/ErrorState'
+import { Logo } from '@/components/Logo'
 import { queryLegal, ApiError } from '@/lib/api'
 import type { QueryResponse } from '@/lib/types'
 
@@ -14,11 +15,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [response, setResponse] = useState<QueryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Guardamos la pregunta enviada para mostrarla como burbuja del usuario.
+  const [submittedQuery, setSubmittedQuery] = useState('')
 
   const handleSubmit = async (query: string) => {
     setIsLoading(true)
     setResponse(null)
     setError(null)
+    setSubmittedQuery(query)
 
     try {
       const result = await queryLegal(query)
@@ -30,35 +34,26 @@ export default function Home() {
     }
   }
 
-  const handleExampleClick = () => {
-    handleSubmit(EXAMPLE_QUERY)
-  }
+  const handleExampleClick = () => handleSubmit(EXAMPLE_QUERY)
 
   const handleReset = () => {
     setResponse(null)
     setError(null)
     setIsLoading(false)
+    setSubmittedQuery('')
   }
 
   return (
     <div className="min-h-screen bg-surface-2">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface">
-        <button onClick={handleReset} className="flex items-center gap-2.5 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2">
-          <div className="w-7 h-7 bg-terra rounded-[7px] flex items-center justify-center flex-shrink-0">
-            <svg className="text-white w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3L4 9v12h16V9L12 3z" />
-              <path d="M9 15l3 3 3-3" />
-              <path d="M12 18V9" />
-            </svg>
-          </div>
-          <span className="text-base font-bold tracking-tight text-ink">
-            parcero<span className="font-normal text-ink-3">legal</span>
-          </span>
+      <nav className="flex items-center px-5 py-3.5 border-b border-border bg-surface">
+        <button
+          onClick={handleReset}
+          className="flex items-center cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label="Volver al inicio"
+        >
+          <Logo size={19} />
         </button>
-        <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-2.5 py-1 rounded-full">
-          No reemplaza un abogado
-        </span>
       </nav>
 
       {/* Main */}
@@ -66,8 +61,8 @@ export default function Home() {
         {/* Hero */}
         {!response && !isLoading && !error && (
           <div className="mb-8 sm:mb-10 text-center">
-            <h1 className="mb-3 text-3xl sm:text-4xl font-bold tracking-tight text-ink">
-              tu derecho, claro.
+            <h1 className="font-display mb-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
+              Tu derecho, claro.
             </h1>
             <p className="mb-6 sm:mb-8 text-base sm:text-lg text-ink-2 font-normal">
               Consulta la Constitución y jurisprudencia colombiana en lenguaje normal.
@@ -79,12 +74,19 @@ export default function Home() {
         {/* Search Box */}
         <SearchBox onSubmit={handleSubmit} isLoading={isLoading} />
 
+        {/* Disclaimer badge — debajo del buscador */}
+        <div className="mt-3 flex justify-center">
+          <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-[11px] py-[5px] rounded-full">
+            No reemplaza un abogado
+          </span>
+        </div>
+
         {/* Example */}
         {!response && !isLoading && !error && (
           <div className="mt-5 text-center">
             <button
               onClick={handleExampleClick}
-              className="text-sm text-ink-3 hover:text-terra transition-colors duration-150 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:ring-offset-2"
+              className="text-sm text-ink-3 hover:text-primary transition-colors duration-150 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               Prueba: &quot;{EXAMPLE_QUERY}&quot;
             </button>
@@ -98,7 +100,7 @@ export default function Home() {
         {error && !isLoading && <ErrorState message={error} />}
 
         {/* Results */}
-        {response && <ResultPanel response={response} />}
+        {response && <ResultPanel response={response} query={submittedQuery} />}
       </main>
 
       {/* Footer */}
@@ -106,7 +108,7 @@ export default function Home() {
         <div className="container mx-auto px-4 text-center text-sm text-ink-3">
           <p>
             Beta · Los resultados se basan en IA y pueden contener errores ·{' '}
-            <a href="/about" className="text-terra hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded">
+            <a href="/about" className="text-primary hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded">
               Acerca de
             </a>
             {' '}·{' '}
@@ -114,7 +116,7 @@ export default function Home() {
               href="https://github.com/jsparadacelis/parcerolegal/issues"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-terra hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terra focus-visible:rounded"
+              className="text-primary hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
             >
               Reportar error
             </a>

@@ -4,25 +4,38 @@ export const runtime = 'edge'
 export const size = { width: 180, height: 180 }
 export const contentType = 'image/png'
 
+// Monograma "p" + punto de acento (reemplaza la casita).
 export default function AppleIcon() {
   return new ImageResponse(
     (
       <div
         style={{
-          background: '#C2410C',
+          background: '#14161C',
           width: '100%',
           height: '100%',
           borderRadius: 40,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          position: 'relative',
+          fontFamily: 'sans-serif',
+          fontWeight: 800,
+          fontSize: 118,
+          color: '#FFFFFF',
         }}
       >
-        <svg width="110" height="110" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3L4 9v12h16V9L12 3z" />
-          <path d="M9 15l3 3 3-3" />
-          <path d="M12 18V9" />
-        </svg>
+        p
+        <div
+          style={{
+            position: 'absolute',
+            top: 38,
+            right: 38,
+            width: 26,
+            height: 26,
+            borderRadius: 26,
+            background: '#2457D6',
+          }}
+        />
       </div>
     ),
     { ...size },
