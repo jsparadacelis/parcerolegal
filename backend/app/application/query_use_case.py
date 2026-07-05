@@ -6,13 +6,31 @@ import time
 
 from backend.app.domain.entities import QueryResult, RetrievedChunk, Source
 from backend.app.domain.ports import Embedder, LLMClient, VectorStore
-from backend.app.domain.services import extract_sentencia_id, filter_by_score, is_out_of_scope
-
-_OUT_OF_SCOPE_ANSWER = (
-    "Tu pregunta está fuera del alcance de la legislación colombiana disponible. "
-    "Por favor formula una pregunta relacionada con la Constitución Política de Colombia "
-    "o las sentencias de la Corte Constitucional."
+from backend.app.domain.services import (
+    detect_legal_area,
+    extract_sentencia_id,
+    filter_by_score,
+    is_out_of_scope,
 )
+
+_SCOPE = "la Constitución Política de Colombia y las sentencias de la Corte Constitucional"
+
+
+def _build_out_of_scope_answer(question: str) -> str:
+    """Mensaje de fuera-de-alcance: reconoce el tema cuando se puede y orienta."""
+    area = detect_legal_area(question)
+    if area:
+        return (
+            f"Tu pregunta parece tratar sobre {area}, un tema que todavía no está en "
+            f"el corpus de Parcero Legal. Por ahora solo respondemos con base en "
+            f"{_SCOPE}. Para este caso te recomendamos revisar la normativa "
+            "correspondiente o consultar a un abogado."
+        )
+    return (
+        "No encontré información sobre tu pregunta en el corpus de Parcero Legal, que "
+        f"hoy cubre {_SCOPE}. Intenta reformularla en términos de derechos "
+        "constitucionales, o consulta a un abogado para tu caso puntual."
+    )
 
 _SYSTEM_ROLE = """\
 Eres un asistente jurídico especializado en derecho constitucional colombiano.
@@ -57,7 +75,7 @@ class QueryUseCase:
 
         if is_out_of_scope(filtered):
             return QueryResult(
-                answer=_OUT_OF_SCOPE_ANSWER,
+                answer=_build_out_of_scope_answer(question),
                 sources=[],
                 out_of_scope=True,
                 processing_time_ms=elapsed_ms(),

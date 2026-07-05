@@ -34,7 +34,7 @@ _CHUNK_ABOVE_2 = RetrievedChunk(
 _CHUNK_BELOW = RetrievedChunk(
     chunk_id="c2",
     text="Texto irrelevante.",
-    score=0.40,
+    score=0.30,
     source_type="constitucion",
     metadata={"article_numero": "1", "titulo": "Otro", "url_original": "http://example.com"},
 )
@@ -54,6 +54,16 @@ def use_case() -> QueryUseCase:
         embedder=FakeEmbedder(),
         store=FakeVectorStore(chunks=[_CHUNK_ABOVE]),
         llm=FakeLLMClient(answer="El habeas corpus es un derecho fundamental."),
+    )
+
+
+@pytest.fixture
+def out_of_scope_use_case() -> QueryUseCase:
+    """Store vacío → siempre cae en la rama de fuera-de-alcance."""
+    return QueryUseCase(
+        embedder=FakeEmbedder(),
+        store=FakeVectorStore(chunks=[]),
+        llm=FakeLLMClient(),
     )
 
 
@@ -105,13 +115,20 @@ class TestQueryUseCaseExecute:
         assert result.out_of_scope is True
         assert result.sources == []
 
-    def test_out_of_scope_returns_empty_sources(self):
-        uc = QueryUseCase(
-            embedder=FakeEmbedder(),
-            store=FakeVectorStore(chunks=[]),
-            llm=FakeLLMClient(),
+    def test_out_of_scope_answer_mentions_detected_area(self, out_of_scope_use_case):
+        result = out_of_scope_use_case.execute(
+            "¿puedo quedarme con los bienes tras el divorcio?"
         )
-        result = uc.execute("pregunta fuera de alcance")
+        assert result.out_of_scope is True
+        assert "Civil" in result.answer
+
+    def test_out_of_scope_answer_is_generic_when_area_unknown(self, out_of_scope_use_case):
+        result = out_of_scope_use_case.execute("cuánto cuesta un carro en Colombia")
+        assert result.out_of_scope is True
+        assert "corpus de Parcero Legal" in result.answer
+
+    def test_out_of_scope_returns_empty_sources(self, out_of_scope_use_case):
+        result = out_of_scope_use_case.execute("pregunta fuera de alcance")
         assert result.sources == []
 
     def test_out_of_scope_does_not_call_llm(self):

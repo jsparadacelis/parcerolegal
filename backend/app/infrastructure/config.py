@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     qdrant_api_key: str = ""
     jina_api_key: str = ""
     environment: str = "development"
-    similarity_threshold: float = 0.45
+    similarity_threshold: float = 0.40
     embedding_model: str = "jina-embeddings-v3"
     embedding_dimensions: int = 1024
     llm_model: str = "llama-3.3-70b-versatile"
