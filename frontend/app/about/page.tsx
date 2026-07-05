@@ -91,21 +91,28 @@ export default function AboutPage() {
         {/* Limitaciones / disclaimer */}
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">Limitaciones importantes</h2>
-          <div className="rounded-r-lg border-l-[3px] border-warn bg-gold-tint pl-4 pr-3 py-3 text-sm leading-relaxed text-ink-2">
-            <p className="mb-2">
+          <div className="rounded-xl border border-border bg-surface px-5 py-5 shadow-sm">
+            <div className="mb-3.5 flex items-center gap-2 border-b border-surface-3 pb-3.5">
+              <span className="text-warn text-[13px] leading-none" aria-hidden="true">⚠</span>
+              <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-warn">
+                Lee esto antes
+              </span>
+            </div>
+            <p className="mb-3 text-[14.5px] leading-relaxed text-ink-2">
               <strong className="text-ink font-semibold">parcerolegal no es asesoría jurídica</strong>
               {' '}y no reemplaza a un abogado. Las respuestas son orientativas — pueden
               contener errores, estar desactualizadas o no aplicar a tu situación específica.
             </p>
-            <p className="mb-2">
+            <p className="mb-3 text-[14.5px] leading-relaxed text-ink-2">
               El corpus cubre principalmente la Constitución del 91 y jurisprudencia
               constitucional seleccionada. Temas de derecho civil, penal, laboral, comercial
               o administrativo pueden no estar cubiertos o cubiertos parcialmente.
             </p>
-            <p>
+            <p className="text-[14.5px] leading-relaxed text-ink-2">
               Para decisiones legales que te afecten — una tutela, un contrato, un proceso
-              judicial — consulta siempre con un abogado. En Colombia puedes acceder a
-              consultorios jurídicos gratuitos en universidades y en la Defensoría del Pueblo.
+              judicial — consulta siempre con un abogado. En Colombia puedes acceder a{' '}
+              <strong className="text-ink font-semibold">consultorios jurídicos gratuitos</strong>
+              {' '}en universidades y en la Defensoría del Pueblo.
             </p>
           </div>
         </section>
