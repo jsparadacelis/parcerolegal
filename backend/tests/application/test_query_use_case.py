@@ -45,7 +45,7 @@ def an_irrelevant_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c2",
         text="Texto irrelevante.",
-        score=0.40,
+        score=0.30,
         source_type="constitucion",
         metadata={"article_numero": "1", "titulo": "Otro", "url_original": "http://example.com"},
     )
@@ -173,6 +173,22 @@ class TestOutOfScope:
         use_case.execute("pregunta fuera de scope")
 
         llm.generate.assert_not_called()
+
+    def test_out_of_scope_answer_mentions_detected_area(self, use_case, store):
+        store.search.return_value = []
+
+        result = use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
+
+        assert result.out_of_scope is True
+        assert "Civil" in result.answer
+
+    def test_out_of_scope_answer_is_generic_when_area_unknown(self, use_case, store):
+        store.search.return_value = []
+
+        result = use_case.execute("cuánto cuesta un carro en Colombia")
+
+        assert result.out_of_scope is True
+        assert "corpus de Parcero Legal" in result.answer
 
 
 class TestPromptConstruction:
