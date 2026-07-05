@@ -13,27 +13,33 @@ def _chunk(score: float, chunk_id: str = "c1") -> RetrievedChunk:
 class TestFilterByScore:
     def test_all_above_threshold(self):
         chunks = [_chunk(0.80), _chunk(0.90)]
+
         assert len(filter_by_score(chunks)) == 2
 
     def test_all_below_threshold(self):
         chunks = [_chunk(0.30), _chunk(0.40)]
+
         assert len(filter_by_score(chunks)) == 0
 
     def test_mixed_scores(self):
         chunks = [_chunk(0.80, "high"), _chunk(0.40, "low"), _chunk(0.70, "mid")]
+
         result = filter_by_score(chunks)
-        assert len(result) == 2
+
         ids = [c.chunk_id for c in result]
+        assert len(result) == 2
         assert "high" in ids
         assert "mid" in ids
         assert "low" not in ids
 
     def test_exact_threshold_included(self):
         chunks = [_chunk(0.45)]
+
         assert len(filter_by_score(chunks)) == 1
 
     def test_just_below_threshold_excluded(self):
         chunks = [_chunk(0.449)]
+
         assert len(filter_by_score(chunks)) == 0
 
     def test_empty_input(self):
@@ -41,7 +47,9 @@ class TestFilterByScore:
 
     def test_custom_threshold(self):
         chunks = [_chunk(0.50), _chunk(0.60)]
+
         result = filter_by_score(chunks, threshold=0.55)
+
         assert len(result) == 1
         assert result[0].score == 0.60
 

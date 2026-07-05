@@ -1,6 +1,8 @@
 """Tests for QdrantVectorStore infrastructure adapter."""
 from __future__ import annotations
 
+import json
+
 import pytest
 import responses
 
@@ -95,7 +97,6 @@ class TestQdrantVectorStoreSearch:
         assert "source_type" not in chunk.metadata
 
     def test_passes_top_k_to_qdrant(self, store, mock_http):
-        import json
         mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
 
         store.search([0.1] * 384, top_k=3)
@@ -104,7 +105,6 @@ class TestQdrantVectorStoreSearch:
         assert sent["limit"] == 3
 
     def test_default_top_k_is_5(self, store, mock_http):
-        import json
         mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
 
         store.search([0.1] * 384)
@@ -125,7 +125,6 @@ class TestQdrantVectorStoreSearch:
         assert store.search([0.1] * 384) == []
 
     def test_no_filter_sent_when_sentencia_id_omitted(self, store, mock_http):
-        import json
         mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
 
         store.search([0.1] * 384)
@@ -134,7 +133,6 @@ class TestQdrantVectorStoreSearch:
         assert "filter" not in sent
 
     def test_sends_sentencia_id_filter(self, store, mock_http):
-        import json
         mock_http.add(responses.POST, _SEARCH_URL, json=_qdrant_response([]))
 
         store.search([0.1] * 384, sentencia_id="T-760-08")
