@@ -74,10 +74,18 @@ export default function Home() {
         {/* Search Box */}
         <SearchBox onSubmit={handleSubmit} isLoading={isLoading} />
 
-        {/* Disclaimer badge — debajo del buscador */}
-        <div className="mt-3 flex justify-center">
-          <span className="text-[11px] font-medium text-ink-3 bg-surface-2 border border-border px-[11px] py-[5px] rounded-full">
-            No reemplaza un abogado
+        {/* Disclaimer hint — debajo del buscador */}
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          <svg
+            className="w-[13px] h-[13px] flex-none text-ink-3/70"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span className="text-[12px] text-ink-3/70">
+            Orientativo · no reemplaza a un abogado
           </span>
         </div>
 
