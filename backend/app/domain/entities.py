@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# Tipos de fuente del corpus. Determinan cómo se construye el título/URL de una Source.
+SOURCE_TYPE_CONSTITUCION = "constitucion"
+SOURCE_TYPE_SENTENCIA = "sentencia"
+
 
 @dataclass(frozen=True)
 class RetrievedChunk:

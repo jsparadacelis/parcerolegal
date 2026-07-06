@@ -6,9 +6,13 @@ import time
 
 import requests
 
-_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-_MAX_RETRIES = 3
-_BASE_DELAY = 1.0
+from backend.app.infrastructure.config import (
+    GROQ_CHAT_COMPLETIONS_URL,
+    GROQ_MAX_RETRIES,
+    GROQ_RETRY_BASE_DELAY_SECONDS,
+    GROQ_TIMEOUT_SECONDS,
+    HTTP_TOO_MANY_REQUESTS,
+)
 
 
 class GroqLLMClient:
@@ -36,11 +40,13 @@ class GroqLLMClient:
 
         last_response: requests.Response | None = None
 
-        for attempt in range(_MAX_RETRIES):
-            response = requests.post(_GROQ_URL, json=payload, headers=self._headers, timeout=40)
-            if response.status_code == 429:
+        for attempt in range(GROQ_MAX_RETRIES):
+            response = requests.post(
+                GROQ_CHAT_COMPLETIONS_URL, json=payload, headers=self._headers, timeout=GROQ_TIMEOUT_SECONDS
+            )
+            if response.status_code == HTTP_TOO_MANY_REQUESTS:
                 last_response = response
-                time.sleep(_BASE_DELAY * (2 ** attempt))
+                time.sleep(GROQ_RETRY_BASE_DELAY_SECONDS * (2 ** attempt))
                 continue
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
+from backend.app.infrastructure.config import QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH
+
 
 class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=3, max_length=500)
+    question: str = Field(..., min_length=QUESTION_MIN_LENGTH, max_length=QUESTION_MAX_LENGTH)
 
     @field_validator("question", mode="before")
     @classmethod
