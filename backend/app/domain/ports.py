@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.app.domain.entities import RetrievedChunk
+from backend.app.domain.entities import MissedQuery, RetrievedChunk
 
 
 class Embedder(Protocol):
@@ -22,3 +22,14 @@ class VectorStore(Protocol):
 
 class LLMClient(Protocol):
     def generate(self, prompt: str, system: str = "") -> str: ...
+
+
+class MissedQueryStore(Protocol):
+    """Persistencia best-effort de preguntas fuera de alcance.
+
+    Contrato: `save` es fire-and-forget — no debe bloquear la respuesta al
+    usuario ni propagar excepciones. El use case además la envuelve de forma
+    defensiva, así que un fallo aquí nunca rompe la consulta.
+    """
+
+    def save(self, missed: MissedQuery) -> None: ...

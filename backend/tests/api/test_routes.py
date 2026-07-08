@@ -1,11 +1,13 @@
 """Integration tests for API endpoints using TestClient."""
 from __future__ import annotations
 
+import json
 import logging
 from unittest.mock import create_autospec
 
 import pytest
 import requests
+import responses
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import get_settings, get_use_case
@@ -14,9 +16,14 @@ from backend.app.application.query_use_case import QueryUseCase
 from backend.app.domain.entities import RetrievedChunk
 from backend.app.domain.ports import Embedder, LLMClient, VectorStore
 from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
+from backend.app.infrastructure.supabase_missed_query_store import (
+    SupabaseMissedQueryStore,
+)
 
 _QUESTION = "¿Qué es el habeas corpus?"
 _ANSWER = "El habeas corpus es un derecho fundamental."
+_SUPABASE_URL = "https://proj.supabase.co"
+_SUPABASE_INSERT_URL = f"{_SUPABASE_URL}/rest/v1/missed_queries"
 
 
 def a_relevant_chunk() -> RetrievedChunk:
@@ -59,8 +66,25 @@ def llm() -> LLMClient:
 
 
 @pytest.fixture
-def use_case(embedder, store, llm) -> QueryUseCase:
-    return QueryUseCase(embedder=embedder, store=store, llm=llm, top_k=DEFAULT_TOP_K)
+def missed_query_store() -> SupabaseMissedQueryStore:
+    return SupabaseMissedQueryStore(url=_SUPABASE_URL, api_key="test-key")
+
+
+@pytest.fixture
+def mock_http():
+    with responses.RequestsMock() as r:
+        yield r
+
+
+@pytest.fixture
+def use_case(embedder, store, llm, missed_query_store) -> QueryUseCase:
+    return QueryUseCase(
+        embedder=embedder,
+        store=store,
+        llm=llm,
+        top_k=DEFAULT_TOP_K,
+        missed_query_store=missed_query_store,
+    )
 
 
 @pytest.fixture
@@ -148,13 +172,20 @@ class TestQueryEndpoint:
 
         assert data["processing_time_ms"] > 0
 
-    def test_out_of_scope_returns_true(self, client: TestClient, store):
+    def test_out_of_scope_returns_true(self, client: TestClient, store, mock_http):
         store.search.return_value = [a_low_score_chunk()]
+        mock_http.add(responses.POST, _SUPABASE_INSERT_URL, status=201)
 
-        data = client.post("/api/query", json={"question": "¿Cuánto cuesta el arroz?"}).json()
+        response = client.post("/api/query", json={"question": "¿Cuánto cuesta el arroz?"})
+        data = response.json()
 
         assert data["out_of_scope"] is True
         assert data["sources"] == []
+        # fire-and-forget: la pregunta fuera de alcance se manda al cliente Supabase
+        # sin afectar la respuesta al usuario (200 + out_of_scope).
+        assert response.status_code == 200
+        assert mock_http.calls[0].request.url == _SUPABASE_INSERT_URL
+        assert json.loads(mock_http.calls[0].request.body)["question"] == "¿Cuánto cuesta el arroz?"
 
     def test_in_scope_out_of_scope_is_false(self, client: TestClient, store, llm):
         store.search.return_value = [a_relevant_chunk()]

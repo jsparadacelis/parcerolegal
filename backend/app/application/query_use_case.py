@@ -2,21 +2,30 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 from backend.app.domain.entities import (
     SOURCE_TYPE_CONSTITUCION,
+    MissedQuery,
     QueryResult,
     RetrievedChunk,
     Source,
 )
-from backend.app.domain.ports import Embedder, LLMClient, VectorStore
+from backend.app.domain.ports import (
+    Embedder,
+    LLMClient,
+    MissedQueryStore,
+    VectorStore,
+)
 from backend.app.domain.services import (
     detect_legal_area,
     extract_sentencia_id,
     filter_by_score,
     is_out_of_scope,
 )
+
+logger = logging.getLogger("parcerolegal")
 
 _SCOPE = "la Constitución Política de Colombia y las sentencias de la Corte Constitucional"
 
@@ -64,11 +73,13 @@ class QueryUseCase:
         store: VectorStore,
         llm: LLMClient,
         top_k: int,
+        missed_query_store: MissedQueryStore | None = None,
     ) -> None:
         self._embedder = embedder
         self._store = store
         self._llm = llm
         self._top_k = top_k
+        self._missed_query_store = missed_query_store
 
     def execute(self, question: str) -> QueryResult:
         start = time.time()
@@ -81,8 +92,10 @@ class QueryUseCase:
         elapsed_ms = lambda: (time.time() - start) * 1000
 
         if is_out_of_scope(filtered):
+            answer = _build_out_of_scope_answer(question)
+            self._record_missed_query(question, answer, chunks)
             return QueryResult(
-                answer=_build_out_of_scope_answer(question),
+                answer=answer,
                 sources=[],
                 out_of_scope=True,
                 processing_time_ms=elapsed_ms(),
@@ -101,6 +114,29 @@ class QueryUseCase:
             out_of_scope=False,
             processing_time_ms=elapsed_ms(),
         )
+
+    def _record_missed_query(
+        self,
+        question: str,
+        answer: str,
+        chunks: list[RetrievedChunk],
+    ) -> None:
+        """Persiste la pregunta fuera de alcance best-effort.
+
+        Fire-and-forget: cualquier fallo se loguea pero jamás rompe la respuesta.
+        """
+        if self._missed_query_store is None:
+            return
+        missed = MissedQuery(
+            question=question,
+            answer=answer,
+            top_score=chunks[0].score if chunks else None,
+            detected_area=detect_legal_area(question),
+        )
+        try:
+            self._missed_query_store.save(missed)
+        except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
+            logger.exception("no se pudo guardar la pregunta fuera de alcance")
 
 
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:

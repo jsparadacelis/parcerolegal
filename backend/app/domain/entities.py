@@ -32,3 +32,19 @@ class QueryResult:
     sources: list[Source]
     out_of_scope: bool
     processing_time_ms: float
+
+
+@dataclass(frozen=True)
+class MissedQuery:
+    """Una pregunta que cayó fuera de alcance (bajo el umbral de similitud).
+
+    Se persiste best-effort para analizar vacíos del corpus. `top_score` es la
+    mayor similitud recuperada antes de filtrar (None si no hubo chunks): permite
+    distinguir el near-miss del ruido y recalibrar el umbral. La marca de tiempo
+    la asigna el almacenamiento (default server-side).
+    """
+
+    question: str
+    answer: str
+    top_score: float | None
+    detected_area: str | None
