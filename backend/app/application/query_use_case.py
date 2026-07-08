@@ -6,6 +6,7 @@ import logging
 import time
 
 from backend.app.domain.entities import (
+    SOURCE_TYPE_CONSTITUCION,
     MissedQuery,
     QueryResult,
     RetrievedChunk,
@@ -71,11 +72,13 @@ class QueryUseCase:
         embedder: Embedder,
         store: VectorStore,
         llm: LLMClient,
+        top_k: int,
         missed_query_store: MissedQueryStore | None = None,
     ) -> None:
         self._embedder = embedder
         self._store = store
         self._llm = llm
+        self._top_k = top_k
         self._missed_query_store = missed_query_store
 
     def execute(self, question: str) -> QueryResult:
@@ -83,7 +86,7 @@ class QueryUseCase:
 
         embedding = self._embedder.embed(question)
         sentencia_id = extract_sentencia_id(question)
-        chunks = self._store.search(embedding, top_k=5, sentencia_id=sentencia_id)
+        chunks = self._store.search(embedding, top_k=self._top_k, sentencia_id=sentencia_id)
         filtered = chunks if sentencia_id and chunks else filter_by_score(chunks)
 
         elapsed_ms = lambda: (time.time() - start) * 1000
@@ -137,7 +140,7 @@ class QueryUseCase:
 
 
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:
-    if chunk.source_type == "constitucion":
+    if chunk.source_type == SOURCE_TYPE_CONSTITUCION:
         article_numero = chunk.metadata.get("article_numero", "")
         titulo = chunk.metadata.get("titulo", "")
         title = f"Art. {article_numero} — {titulo}" if article_numero else titulo

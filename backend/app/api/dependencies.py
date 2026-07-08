@@ -60,5 +60,6 @@ def get_use_case() -> QueryUseCase:
             temperature=settings.llm_temperature,
             max_tokens=settings.llm_max_tokens,
         ),
+        top_k=settings.top_k,
         missed_query_store=_build_missed_query_store(settings),
     )

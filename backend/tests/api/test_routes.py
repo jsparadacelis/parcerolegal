@@ -15,7 +15,7 @@ from backend.app.api.main import app
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.domain.entities import RetrievedChunk
 from backend.app.domain.ports import Embedder, LLMClient, VectorStore
-from backend.app.infrastructure.config import Settings
+from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
 from backend.app.infrastructure.supabase_missed_query_store import (
     SupabaseMissedQueryStore,
 )
@@ -82,6 +82,7 @@ def use_case(embedder, store, llm, missed_query_store) -> QueryUseCase:
         embedder=embedder,
         store=store,
         llm=llm,
+        top_k=DEFAULT_TOP_K,
         missed_query_store=missed_query_store,
     )
 

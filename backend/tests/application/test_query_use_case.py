@@ -13,6 +13,7 @@ from backend.app.domain.ports import (
     MissedQueryStore,
     VectorStore,
 )
+from backend.app.infrastructure.config import DEFAULT_TOP_K
 
 _HABEAS_CORPUS_QUESTION = "¿Qué es el habeas corpus?"
 _SENTENCIA_QUESTION = "¿Qué dice la sentencia T-760 de 2008?"
@@ -102,6 +103,7 @@ def use_case(embedder, store, llm, missed_query_store) -> QueryUseCase:
         embedder=embedder,
         store=store,
         llm=llm,
+        top_k=DEFAULT_TOP_K,
         missed_query_store=missed_query_store,
     )
 
@@ -340,7 +342,7 @@ class TestMissedQueryPersistence:
 
     def test_works_without_a_missed_query_store(self, embedder, store, llm):
         store.search.return_value = []
-        use_case = QueryUseCase(embedder=embedder, store=store, llm=llm)
+        use_case = QueryUseCase(embedder=embedder, store=store, llm=llm, top_k=DEFAULT_TOP_K)
 
         result = use_case.execute("pregunta fuera de alcance")
 

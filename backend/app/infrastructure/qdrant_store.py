@@ -5,11 +5,12 @@ from __future__ import annotations
 import requests
 
 from backend.app.domain.entities import RetrievedChunk
+from backend.app.infrastructure.config import QDRANT_SEARCH_PATH
 
 
 class QdrantVectorStore:
     def __init__(self, url: str, api_key: str, collection: str) -> None:
-        self._url = f"{url}/collections/{collection}/points/search"
+        self._url = f"{url}{QDRANT_SEARCH_PATH.format(collection=collection)}"
         self._headers = {"api-key": api_key, "Content-Type": "application/json"}
 
     def search(
