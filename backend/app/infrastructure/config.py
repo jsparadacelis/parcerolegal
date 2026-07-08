@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1024
     qdrant_collection: str = "parcerolegal"
+    supabase_url: str = ""
+    supabase_key: str = ""
+    supabase_missed_queries_table: str = "missed_queries"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
