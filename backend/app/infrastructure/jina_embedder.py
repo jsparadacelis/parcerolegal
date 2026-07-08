@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import requests
 
-_JINA_URL = "https://api.jina.ai/v1/embeddings"
+from backend.app.infrastructure.config import (
+    JINA_EMBEDDING_TASK,
+    JINA_EMBEDDINGS_URL,
+    JINA_TIMEOUT_SECONDS,
+)
 
 
 class JinaEmbedder:
@@ -19,10 +23,12 @@ class JinaEmbedder:
     def embed(self, text: str) -> list[float]:
         payload = {
             "model": self._model,
-            "task": "retrieval.query",
+            "task": JINA_EMBEDDING_TASK,
             "dimensions": self._dimensions,
             "input": [text],
         }
-        response = requests.post(_JINA_URL, json=payload, headers=self._headers, timeout=10)
+        response = requests.post(
+            JINA_EMBEDDINGS_URL, json=payload, headers=self._headers, timeout=JINA_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         return response.json()["data"][0]["embedding"]
