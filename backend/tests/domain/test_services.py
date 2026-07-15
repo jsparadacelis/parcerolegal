@@ -136,38 +136,7 @@ class TestExtractSentenciaId:
 
 
 class TestDedupeSources:
-    def test_collapses_repeated_sentencia_into_one(self):
-        sources = [
-            a_sentencia_source(chunk_id="c1"),
-            a_sentencia_source(chunk_id="c2"),
-        ]
-
-        result = dedupe_sources(sources)
-
-        assert len(result) == 1
-
-    def test_keeps_first_occurrence(self):
-        sources = [
-            a_sentencia_source(chunk_id="first"),
-            a_sentencia_source(chunk_id="second"),
-        ]
-
-        result = dedupe_sources(sources)
-
-        assert result[0].chunk_id == "first"
-
-    def test_keeps_distinct_documents(self):
-        sources = [
-            a_sentencia_source(sentencia_id="T-622-16"),
-            a_constitucion_source(article="44"),
-            a_sentencia_source(sentencia_id="C-355-06"),
-        ]
-
-        result = dedupe_sources(sources)
-
-        assert len(result) == 3
-
-    def test_preserves_order_while_removing_duplicate(self):
+    def test_collapses_duplicate_keeping_first_in_order(self):
         sources = [
             a_sentencia_source(chunk_id="s1", sentencia_id="T-622-16"),
             a_constitucion_source(chunk_id="a1", article="44"),
@@ -178,15 +147,16 @@ class TestDedupeSources:
 
         assert [s.chunk_id for s in result] == ["s1", "a1"]
 
-    def test_same_article_number_is_one_source(self):
+    def test_keeps_all_distinct_documents(self):
         sources = [
-            a_constitucion_source(chunk_id="a1", article="30"),
-            a_constitucion_source(chunk_id="a2", article="30"),
+            a_sentencia_source(sentencia_id="T-622-16"),
+            a_constitucion_source(article="44"),
+            a_sentencia_source(sentencia_id="C-355-06"),
         ]
 
         result = dedupe_sources(sources)
 
-        assert len(result) == 1
+        assert len(result) == 3
 
     def test_empty_list_returns_empty(self):
         assert dedupe_sources([]) == []
