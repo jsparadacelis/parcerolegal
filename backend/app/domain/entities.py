@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 # Tipos de fuente del corpus. Determinan cómo se construye el título/URL de una Source.
 SOURCE_TYPE_CONSTITUCION = "constitucion"
 SOURCE_TYPE_SENTENCIA = "sentencia"
+SOURCE_TYPE_CODIGO_PENAL = "codigo_penal"
 
 
 @dataclass(frozen=True)

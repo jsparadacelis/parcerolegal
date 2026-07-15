@@ -5,6 +5,7 @@ from pathlib import Path
 
 CONSTITUCION_PATH = Path("data/processed/constitucion.json")
 SENTENCIAS_DIR = Path("data/processed/sentencias")
+CODIGO_PENAL_PATH = Path("data/processed/codigo_penal.json")
 OUTPUT_PATH = Path("data/processed/chunks.json")
 
 CHUNK_MAX = 1000
@@ -110,6 +111,40 @@ def chunk_constitucion(constitucion_path: Path) -> list[dict]:
     return chunks
 
 
+def chunk_codigo_penal(codigo_penal_path: Path) -> list[dict]:
+    data = json.loads(codigo_penal_path.read_text(encoding="utf-8"))
+    chunks: list[dict] = []
+
+    for article in data["articles"]:
+        text = article["texto"].strip()
+        if not text:
+            # Ej. cp_art_447_a: artículo íntegramente derogado, su único
+            # "texto" en la fuente es la nota de derogatoria (ya vacía tras
+            # el strip del scraper). Sin contenido sustantivo que retrieval
+            # pueda citar como norma vigente.
+            continue
+
+        parts = split_text(text)
+        for i, part in enumerate(parts):
+            chunks.append({
+                # article['id'] (no 'numero') porque numero no es único entre
+                # un artículo base y sus sufijos (ej. cp_art_104 y cp_art_104_a
+                # comparten numero=104).
+                "chunk_id": f"codigo_penal_{article['id']}_{i}",
+                "text": part,
+                "source_type": "codigo_penal",
+                "article_id": article["id"],
+                "article_numero": article["numero"],
+                "sufijo": article.get("sufijo"),
+                "nombre": article.get("nombre"),
+                "titulo": article["titulo"],
+                "capitulo": article.get("capitulo"),
+                "url_original": article["url_original"],
+            })
+
+    return chunks
+
+
 def chunk_sentencia(sentencia_path: Path) -> list[dict]:
     data = json.loads(sentencia_path.read_text(encoding="utf-8"))
     meta = data["metadata"]
@@ -144,8 +179,12 @@ def chunk_all_sentencias(sentencias_dir: Path) -> list[dict]:
     return chunks
 
 
-def build_output(constitucion_chunks: list[dict], sentencia_chunks: list[dict]) -> dict:
-    all_chunks = constitucion_chunks + sentencia_chunks
+def build_output(
+    constitucion_chunks: list[dict],
+    sentencia_chunks: list[dict],
+    codigo_penal_chunks: list[dict],
+) -> dict:
+    all_chunks = constitucion_chunks + sentencia_chunks + codigo_penal_chunks
     return {
         "metadata": {
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -153,6 +192,7 @@ def build_output(constitucion_chunks: list[dict], sentencia_chunks: list[dict]) 
             "sources": {
                 "constitucion": len(constitucion_chunks),
                 "sentencias": len(sentencia_chunks),
+                "codigo_penal": len(codigo_penal_chunks),
             },
         },
         "chunks": all_chunks,
@@ -168,7 +208,11 @@ def main() -> None:
     sent_chunks = chunk_all_sentencias(SENTENCIAS_DIR)
     print(f"  {len(sent_chunks)} chunks de sentencias")
 
-    output = build_output(const_chunks, sent_chunks)
+    print("Chunking código penal...")
+    cp_chunks = chunk_codigo_penal(CODIGO_PENAL_PATH)
+    print(f"  {len(cp_chunks)} chunks de código penal")
+
+    output = build_output(const_chunks, sent_chunks, cp_chunks)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(

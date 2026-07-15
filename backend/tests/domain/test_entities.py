@@ -2,7 +2,23 @@
 
 import pytest
 
-from backend.app.domain.entities import QueryResult, RetrievedChunk, Source
+from backend.app.domain.entities import (
+    SOURCE_TYPE_CODIGO_PENAL,
+    SOURCE_TYPE_CONSTITUCION,
+    SOURCE_TYPE_SENTENCIA,
+    QueryResult,
+    RetrievedChunk,
+    Source,
+)
+
+
+class TestSourceTypeConstants:
+    def test_codigo_penal_value(self):
+        assert SOURCE_TYPE_CODIGO_PENAL == "codigo_penal"
+
+    def test_all_source_types_are_distinct(self):
+        values = {SOURCE_TYPE_CONSTITUCION, SOURCE_TYPE_SENTENCIA, SOURCE_TYPE_CODIGO_PENAL}
+        assert len(values) == 3
 
 
 class TestRetrievedChunk:

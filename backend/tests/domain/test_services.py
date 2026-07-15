@@ -99,11 +99,11 @@ class TestDetectLegalArea:
         assert area is not None
         assert "Trabajo" in area
 
-    def test_criminal_topic_maps_to_penal_code(self):
-        area = detect_legal_area("¿qué pena tiene el hurto?")
-
-        assert area is not None
-        assert "Penal" in area
+    def test_criminal_topic_no_longer_out_of_scope(self):
+        """Decisión 2026-07-15: el Código Penal (Libro II) entró al corpus, así
+        que preguntas de hurto/homicidio ya no se redirigen como fuera de
+        alcance — deben resolverse por retrieval normal."""
+        assert detect_legal_area("¿qué pena tiene el hurto?") is None
 
     def test_constitutional_question_returns_none(self):
         assert detect_legal_area("¿qué es la acción de tutela?") is None

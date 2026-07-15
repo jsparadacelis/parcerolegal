@@ -266,19 +266,157 @@ class TestChunkSentencia:
 
 
 # ---------------------------------------------------------------------------
+# chunk_codigo_penal
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_codigo_penal(tmp_path):
+    data = {
+        "metadata": {
+            "title": "Código Penal Colombiano (Ley 599 de 2000) — Libro II, Parte Especial",
+            "source_url": "https://example.com",
+            "total_articles": 3,
+        },
+        "articles": [
+            {
+                "id": "cp_art_239",
+                "numero": 239,
+                "sufijo": None,
+                "nombre": "Hurto",
+                "libro": "LIBRO SEGUNDO",
+                "titulo": "TÍTULO VII. DELITOS CONTRA EL PATRIMONIO ECONÓMICO",
+                "capitulo": "CAPÍTULO PRIMERO. DEL HURTO",
+                "texto": "El que se apodere de una cosa mueble ajena incurrirá en prisión.",
+                "url_original": "https://example.com#239",
+            },
+            {
+                "id": "cp_art_103",
+                "numero": 103,
+                "sufijo": None,
+                "nombre": "Homicidio",
+                "libro": "LIBRO SEGUNDO",
+                "titulo": "TÍTULO I. DELITOS CONTRA LA VIDA Y LA INTEGRIDAD PERSONAL",
+                "capitulo": "CAPÍTULO SEGUNDO. DEL HOMICIDIO",
+                "texto": " ".join(
+                    ["Oración %d del artículo largo sobre el homicidio agravado." % i for i in range(30)]
+                ),
+                "url_original": "https://example.com#103",
+            },
+            {
+                "id": "cp_art_104_a",
+                "numero": 104,
+                "sufijo": "A",
+                "nombre": "Feminicidio",
+                "libro": "LIBRO SEGUNDO",
+                "titulo": "TÍTULO I. DELITOS CONTRA LA VIDA Y LA INTEGRIDAD PERSONAL",
+                "capitulo": "CAPÍTULO SEGUNDO. DEL HOMICIDIO",
+                "texto": "Quien causare la muerte a una mujer por su condición de ser mujer.",
+                "url_original": "https://example.com#104A",
+            },
+            {
+                "id": "cp_art_447_a",
+                "numero": 447,
+                "sufijo": "A",
+                "nombre": "",
+                "libro": "LIBRO SEGUNDO",
+                "titulo": "TÍTULO XII. DELITOS CONTRA LA ADMINISTRACIÓN DE JUSTICIA",
+                "capitulo": None,
+                "texto": "",
+                "url_original": "https://example.com#447A",
+            },
+        ],
+    }
+    path = tmp_path / "codigo_penal.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+class TestChunkCodigoPenal:
+    def _chunk(self, path):
+        from data.scripts.chunk_documents import chunk_codigo_penal
+        return chunk_codigo_penal(path)
+
+    def test_returns_list_of_dicts(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        assert isinstance(chunks, list)
+        assert all(isinstance(c, dict) for c in chunks)
+
+    def test_chunk_has_required_fields(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        required = {
+            "chunk_id", "text", "source_type", "article_id", "article_numero",
+            "sufijo", "nombre", "titulo", "capitulo", "url_original",
+        }
+        for c in chunks:
+            missing = required - c.keys()
+            assert not missing, f"Chunk {c.get('chunk_id')} le faltan campos: {missing}"
+
+    def test_source_type_is_codigo_penal(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        for c in chunks:
+            assert c["source_type"] == "codigo_penal"
+
+    def test_short_article_single_chunk(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        art239_chunks = [c for c in chunks if c["article_id"] == "cp_art_239"]
+        assert len(art239_chunks) == 1
+
+    def test_long_article_multiple_chunks(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        art103_chunks = [c for c in chunks if c["article_id"] == "cp_art_103"]
+        assert len(art103_chunks) >= 2
+
+    def test_chunk_id_format(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        pattern = re.compile(r"^codigo_penal_cp_art_\d+(_[a-z0-9]+)?_\d+$")
+        for c in chunks:
+            assert pattern.match(c["chunk_id"]), f"chunk_id inválido: {c['chunk_id']}"
+
+    def test_lettered_sub_article_uses_full_id_not_bare_numero(self, sample_codigo_penal):
+        """cp_art_104_a y un futuro cp_art_104 no deben compartir chunk_id — el
+        chunk_id se arma con el 'id' completo del artículo (incluye sufijo), no
+        solo 'numero' (que no es único entre 104 y 104A)."""
+        chunks = self._chunk(sample_codigo_penal)
+        art104a_chunks = [c for c in chunks if c["article_id"] == "cp_art_104_a"]
+        assert len(art104a_chunks) == 1
+        assert art104a_chunks[0]["chunk_id"] == "codigo_penal_cp_art_104_a_0"
+        assert art104a_chunks[0]["sufijo"] == "A"
+        assert art104a_chunks[0]["nombre"] == "Feminicidio"
+
+    def test_preserves_article_metadata(self, sample_codigo_penal):
+        chunks = self._chunk(sample_codigo_penal)
+        art239 = [c for c in chunks if c["article_id"] == "cp_art_239"]
+        assert len(art239) == 1
+        assert art239[0]["article_numero"] == 239
+        assert art239[0]["nombre"] == "Hurto"
+        assert art239[0]["titulo"] == "TÍTULO VII. DELITOS CONTRA EL PATRIMONIO ECONÓMICO"
+        assert art239[0]["capitulo"] == "CAPÍTULO PRIMERO. DEL HURTO"
+        assert art239[0]["url_original"] == "https://example.com#239"
+
+    def test_empty_texto_article_is_skipped(self, sample_codigo_penal):
+        """cp_art_447_a (íntegramente derogado) tiene texto vacío en la fuente —
+        no debe generar chunks, igual que chunk_constitucion salta artículos
+        sin texto."""
+        chunks = self._chunk(sample_codigo_penal)
+        assert not any(c["article_id"] == "cp_art_447_a" for c in chunks)
+
+
+# ---------------------------------------------------------------------------
 # build_output
 # ---------------------------------------------------------------------------
 
 
 class TestBuildOutput:
-    def _build(self, const_chunks, sent_chunks):
+    def _build(self, const_chunks, sent_chunks, cp_chunks):
         from data.scripts.chunk_documents import build_output
-        return build_output(const_chunks, sent_chunks)
+        return build_output(const_chunks, sent_chunks, cp_chunks)
 
     def test_has_metadata_and_chunks(self):
         output = self._build(
             [{"chunk_id": "c1", "source_type": "constitucion"}],
             [{"chunk_id": "s1", "source_type": "sentencia"}],
+            [],
         )
         assert "metadata" in output
         assert "chunks" in output
@@ -286,13 +424,22 @@ class TestBuildOutput:
     def test_total_chunks_correct(self):
         const = [{"chunk_id": f"c{i}", "source_type": "constitucion"} for i in range(3)]
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
-        output = self._build(const, sent)
-        assert output["metadata"]["total_chunks"] == 8
-        assert len(output["chunks"]) == 8
+        cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
+        output = self._build(const, sent, cp)
+        assert output["metadata"]["total_chunks"] == 12
+        assert len(output["chunks"]) == 12
 
     def test_source_counts_correct(self):
         const = [{"chunk_id": f"c{i}", "source_type": "constitucion"} for i in range(3)]
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
-        output = self._build(const, sent)
+        cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
+        output = self._build(const, sent, cp)
         assert output["metadata"]["sources"]["constitucion"] == 3
         assert output["metadata"]["sources"]["sentencias"] == 5
+        assert output["metadata"]["sources"]["codigo_penal"] == 4
+
+    def test_codigo_penal_empty_list_counts_zero(self):
+        const = [{"chunk_id": "c1", "source_type": "constitucion"}]
+        sent = [{"chunk_id": "s1", "source_type": "sentencia"}]
+        output = self._build(const, sent, [])
+        assert output["metadata"]["sources"]["codigo_penal"] == 0

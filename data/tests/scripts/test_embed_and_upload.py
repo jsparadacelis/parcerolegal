@@ -143,6 +143,58 @@ class TestBuildPayload:
         assert payload["seccion"] == "antecedentes"
         assert "text" in payload
 
+    def test_codigo_penal_payload(self):
+        chunk = {
+            "chunk_id": "codigo_penal_cp_art_239_0",
+            "text": "El que se apodere de una cosa mueble ajena.",
+            "source_type": "codigo_penal",
+            "article_id": "cp_art_239",
+            "article_numero": 239,
+            "sufijo": None,
+            "nombre": "Hurto",
+            "titulo": "TÍTULO VII. DELITOS CONTRA EL PATRIMONIO ECONÓMICO",
+            "capitulo": "CAPÍTULO PRIMERO. DEL HURTO",
+            "url_original": "https://example.com#239",
+        }
+        payload = self._build(chunk)
+        assert payload["source_type"] == "codigo_penal"
+        assert payload["article_id"] == "cp_art_239"
+        assert payload["article_numero"] == 239
+        assert payload["nombre"] == "Hurto"
+        assert "text" in payload
+
+
+# ---------------------------------------------------------------------------
+# filter_chunks_by_source_type
+# ---------------------------------------------------------------------------
+
+
+class TestFilterChunksBySourceType:
+    def _filter(self, chunks, source_types):
+        from data.scripts.embed_and_upload import filter_chunks_by_source_type
+        return filter_chunks_by_source_type(chunks, source_types)
+
+    def test_none_returns_all_chunks(self):
+        chunks = [
+            {"chunk_id": "c1", "source_type": "constitucion"},
+            {"chunk_id": "p1", "source_type": "codigo_penal"},
+        ]
+        assert self._filter(chunks, None) == chunks
+
+    def test_filters_to_matching_source_types(self):
+        chunks = [
+            {"chunk_id": "c1", "source_type": "constitucion"},
+            {"chunk_id": "s1", "source_type": "sentencia"},
+            {"chunk_id": "p1", "source_type": "codigo_penal"},
+            {"chunk_id": "p2", "source_type": "codigo_penal"},
+        ]
+        result = self._filter(chunks, {"codigo_penal"})
+        assert [c["chunk_id"] for c in result] == ["p1", "p2"]
+
+    def test_empty_set_returns_no_chunks(self):
+        chunks = [{"chunk_id": "c1", "source_type": "constitucion"}]
+        assert self._filter(chunks, set()) == []
+
 
 # ---------------------------------------------------------------------------
 # create_collection

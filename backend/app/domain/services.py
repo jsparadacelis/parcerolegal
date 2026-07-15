@@ -20,9 +20,16 @@ _SENTENCIA_PATTERN = re.compile(r"\b(T|C|SU)-(\d+)\b", re.IGNORECASE)
 _SHORT_YEAR_PATTERN = re.compile(r"^[-/](\d{2})\b")
 _YEAR_PATTERN = re.compile(r"\b(19|20)\d{2}\b")
 
-# Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte).
-# Orden importa: la primera coincidencia gana. Solo se usa para dar contexto en el
-# mensaje de fuera-de-alcance, nunca decide si se responde o no.
+# Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte
+# + Código Penal Libro II). Orden importa: la primera coincidencia gana. Solo se
+# usa para dar contexto en el mensaje de fuera-de-alcance, nunca decide si se
+# responde o no.
+#
+# "derecho penal" se retiró de aquí el 2026-07-15: el Código Penal (Libro II,
+# Parte Especial) entró al corpus, así que preguntas sobre delitos ya no son
+# fuera de alcance — deben resolverse por retrieval normal. El Libro I (Parte
+# General: dolo/culpa, tentativa, agravantes genéricos) NO se ingirió y sigue
+# fuera de alcance, pero sin categoría propia — cae en el mensaje genérico.
 _LEGAL_AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "derecho de familia y sucesiones (regulado por el Código Civil)",
@@ -38,13 +45,6 @@ _LEGAL_AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "despedir", "despido", "sin justa causa", "contrato de trabajo",
             "liquidación laboral", "cesantías", "cesantias", "prestaciones sociales",
             "acoso laboral", "indemnización laboral",
-        ),
-    ),
-    (
-        "derecho penal (regulado por el Código Penal)",
-        (
-            "delito", "pena de prisión", "cárcel", "carcel", "hurto", "homicidio",
-            "estafa", "condena", "denuncia penal",
         ),
     ),
     (
