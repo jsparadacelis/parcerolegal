@@ -19,6 +19,7 @@ from backend.app.domain.ports import (
     VectorStore,
 )
 from backend.app.domain.services import (
+    dedupe_sources,
     detect_legal_area,
     extract_sentencia_id,
     filter_by_score,
@@ -106,7 +107,7 @@ class QueryUseCase:
         )
         prompt = _USER_TEMPLATE.format(context=context, question=question)
         answer = self._llm.generate(prompt, system=_SYSTEM_ROLE)
-        sources = [_chunk_to_source(chunk) for chunk in filtered]
+        sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
         return QueryResult(
             answer=answer,

@@ -1,7 +1,8 @@
 """Tests for domain services — score filtering and out-of-scope detection."""
 
-from backend.app.domain.entities import RetrievedChunk
+from backend.app.domain.entities import RetrievedChunk, Source
 from backend.app.domain.services import (
+    dedupe_sources,
     detect_legal_area,
     extract_sentencia_id,
     filter_by_score,
@@ -12,6 +13,24 @@ from backend.app.domain.services import (
 def _chunk(score: float, chunk_id: str = "c1") -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id=chunk_id, text="text", score=score, source_type="constitucion"
+    )
+
+
+def a_sentencia_source(chunk_id: str = "c1", sentencia_id: str = "T-622-16") -> Source:
+    return Source(
+        chunk_id=chunk_id,
+        source_type="sentencia",
+        title=sentencia_id,
+        url=f"http://corte.gov.co/{sentencia_id}",
+    )
+
+
+def a_constitucion_source(chunk_id: str = "c1", article: str = "30") -> Source:
+    return Source(
+        chunk_id=chunk_id,
+        source_type="constitucion",
+        title=f"Art. {article} — Título",
+        url=f"http://example.com/art{article}",
     )
 
 
@@ -114,3 +133,60 @@ class TestExtractSentenciaId:
 
     def test_id_without_any_year_returns_none(self):
         assert extract_sentencia_id("¿Qué dice T-760?") is None
+
+
+class TestDedupeSources:
+    def test_collapses_repeated_sentencia_into_one(self):
+        sources = [
+            a_sentencia_source(chunk_id="c1"),
+            a_sentencia_source(chunk_id="c2"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert len(result) == 1
+
+    def test_keeps_first_occurrence(self):
+        sources = [
+            a_sentencia_source(chunk_id="first"),
+            a_sentencia_source(chunk_id="second"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert result[0].chunk_id == "first"
+
+    def test_keeps_distinct_documents(self):
+        sources = [
+            a_sentencia_source(sentencia_id="T-622-16"),
+            a_constitucion_source(article="44"),
+            a_sentencia_source(sentencia_id="C-355-06"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert len(result) == 3
+
+    def test_preserves_order_while_removing_duplicate(self):
+        sources = [
+            a_sentencia_source(chunk_id="s1", sentencia_id="T-622-16"),
+            a_constitucion_source(chunk_id="a1", article="44"),
+            a_sentencia_source(chunk_id="s2", sentencia_id="T-622-16"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert [s.chunk_id for s in result] == ["s1", "a1"]
+
+    def test_same_article_number_is_one_source(self):
+        sources = [
+            a_constitucion_source(chunk_id="a1", article="30"),
+            a_constitucion_source(chunk_id="a2", article="30"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert len(result) == 1
+
+    def test_empty_list_returns_empty(self):
+        assert dedupe_sources([]) == []

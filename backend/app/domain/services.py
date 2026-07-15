@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from backend.app.domain.entities import RetrievedChunk
+from backend.app.domain.entities import RetrievedChunk, Source
 
 # Umbral de similitud para el pre-filtro de fuera-de-alcance.
 # Calibrado con scores medidos contra el corpus de producción (jina-embeddings-v3):
@@ -62,6 +62,27 @@ def filter_by_score(
     threshold: float = SIMILARITY_THRESHOLD,
 ) -> list[RetrievedChunk]:
     return [c for c in chunks if c.score >= threshold]
+
+
+def dedupe_sources(sources: list[Source]) -> list[Source]:
+    """Colapsa fuentes que apuntan al mismo documento.
+
+    Un documento (un artículo de la Constitución o una sentencia) suele estar
+    troceado en varios chunks; si dos de ellos se recuperan, el usuario vería dos
+    tarjetas idénticas (mismo título y URL), gastando un espacio de la lista de
+    fuentes sin aportar nada. Conserva la primera aparición —la de mayor score,
+    porque los chunks llegan ordenados por relevancia— y descarta las repetidas,
+    preservando el orden. No toca el contexto que se le pasa al LLM.
+    """
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[Source] = []
+    for source in sources:
+        key = (source.source_type, source.title, source.url)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(source)
+    return unique
 
 
 def detect_legal_area(question: str) -> str | None:

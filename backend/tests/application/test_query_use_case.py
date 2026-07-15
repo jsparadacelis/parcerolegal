@@ -67,6 +67,17 @@ def a_sentencia_chunk() -> RetrievedChunk:
     )
 
 
+def another_chunk_of_same_sentencia() -> RetrievedChunk:
+    """Otro fragmento de la MISMA sentencia que a_sentencia_chunk (mismo id/url)."""
+    return RetrievedChunk(
+        chunk_id="c6",
+        text="Otro considerando de la sentencia T-760.",
+        score=0.71,
+        source_type="sentencia",
+        metadata={"sentencia_id": "T-760-2008", "source_url": "http://corte.gov.co/T-760"},
+    )
+
+
 def a_low_score_sentencia_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c5",
@@ -166,6 +177,44 @@ class TestSourceMapping:
         assert source.source_type == "sentencia"
         assert source.title == "T-760-2008"
         assert source.url == "http://corte.gov.co/T-760"
+
+
+class TestSourceDeduplication:
+    def test_repeated_document_appears_once_in_sources(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            another_chunk_of_same_sentencia(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué protege T-760?")
+
+        assert len(result.sources) == 1
+        assert result.sources[0].title == "T-760-2008"
+
+    def test_distinct_documents_are_all_kept(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            a_relevant_constitucion_chunk(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué protege T-760?")
+
+        assert len(result.sources) == 2
+
+    def test_all_fragments_still_reach_the_llm(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            another_chunk_of_same_sentencia(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        use_case.execute("¿Qué protege T-760?")
+
+        prompt = llm.generate.call_args.args[0]
+        assert "La sentencia T-760 protege la salud." in prompt
+        assert "Otro considerando de la sentencia T-760." in prompt
 
 
 class TestOutOfScope:
