@@ -473,21 +473,25 @@ class TestSentenciaReference:
         assert store.search.call_args.kwargs["sentencia_id"] is None
 
 
-class TestMissedQueryPersistence:
-    def test_saves_missed_query_when_out_of_scope(self, use_case, store, missed_query_store):
+class TestQueryPersistence:
+    def test_saves_record_when_out_of_scope(self, use_case, store, missed_query_store):
         store.search.return_value = [an_irrelevant_chunk()]
 
         use_case.execute("¿Cuánto cuesta el arroz?")
 
         missed_query_store.save.assert_called_once()
+        saved = missed_query_store.save.call_args.args[0]
+        assert saved.out_of_scope is True
 
-    def test_does_not_save_when_in_scope(self, use_case, store, llm, missed_query_store):
+    def test_saves_record_when_in_scope(self, use_case, store, llm, missed_query_store):
         store.search.return_value = [a_relevant_constitucion_chunk()]
         llm.generate.return_value = "respuesta"
 
         use_case.execute(_HABEAS_CORPUS_QUESTION)
 
-        missed_query_store.save.assert_not_called()
+        missed_query_store.save.assert_called_once()
+        saved = missed_query_store.save.call_args.args[0]
+        assert saved.out_of_scope is False
 
     def test_saved_record_carries_question_and_answer(self, use_case, store, missed_query_store):
         store.search.return_value = []

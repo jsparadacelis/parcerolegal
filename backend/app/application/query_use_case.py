@@ -101,7 +101,7 @@ class QueryUseCase:
 
         if is_out_of_scope(filtered):
             answer = _build_out_of_scope_answer(question)
-            self._record_missed_query(question, answer, chunks)
+            self._record_query(question, answer, chunks, out_of_scope=True)
             return QueryResult(
                 answer=answer,
                 sources=[],
@@ -124,6 +124,8 @@ class QueryUseCase:
             )
         sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
+        self._record_query(question, answer, chunks, out_of_scope=False)
+
         return QueryResult(
             answer=answer,
             sources=sources,
@@ -131,28 +133,30 @@ class QueryUseCase:
             processing_time_ms=elapsed_ms(),
         )
 
-    def _record_missed_query(
+    def _record_query(
         self,
         question: str,
         answer: str,
         chunks: list[RetrievedChunk],
+        out_of_scope: bool,
     ) -> None:
-        """Persiste la pregunta fuera de alcance best-effort.
+        """Persiste la consulta respondida, best-effort.
 
         Fire-and-forget: cualquier fallo se loguea pero jamás rompe la respuesta.
         """
         if self._missed_query_store is None:
             return
-        missed = MissedQuery(
+        record = MissedQuery(
             question=question,
             answer=answer,
             top_score=chunks[0].score if chunks else None,
             detected_area=detect_legal_area(question),
+            out_of_scope=out_of_scope,
         )
         try:
-            self._missed_query_store.save(missed)
+            self._missed_query_store.save(record)
         except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
-            logger.exception("no se pudo guardar la pregunta fuera de alcance")
+            logger.exception("no se pudo guardar la consulta")
 
 
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:

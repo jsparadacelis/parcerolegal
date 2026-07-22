@@ -37,9 +37,11 @@ class QueryResult:
 
 @dataclass(frozen=True)
 class MissedQuery:
-    """Una pregunta que cayó fuera de alcance (bajo el umbral de similitud).
+    """Una consulta respondida por el sistema, persistida best-effort.
 
-    Se persiste best-effort para analizar vacíos del corpus. `top_score` es la
+    Se guardan todas las consultas (no solo las que caen bajo el umbral de
+    similitud) para poder analizar tanto vacíos del corpus como respuestas en
+    alcance. `out_of_scope` indica si cayó bajo el umbral. `top_score` es la
     mayor similitud recuperada antes de filtrar (None si no hubo chunks): permite
     distinguir el near-miss del ruido y recalibrar el umbral. La marca de tiempo
     la asigna el almacenamiento (default server-side).
@@ -49,3 +51,4 @@ class MissedQuery:
     answer: str
     top_score: float | None
     detected_area: str | None
+    out_of_scope: bool

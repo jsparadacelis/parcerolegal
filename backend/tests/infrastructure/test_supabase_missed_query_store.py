@@ -28,12 +28,14 @@ def a_missed_query(
     answer: str = "Tu pregunta parece tratar sobre derecho de familia...",
     top_score: float | None = 0.38,
     detected_area: str | None = "derecho de familia y sucesiones (regulado por el Código Civil)",
+    out_of_scope: bool = True,
 ) -> MissedQuery:
     return MissedQuery(
         question=question,
         answer=answer,
         top_score=top_score,
         detected_area=detected_area,
+        out_of_scope=out_of_scope,
     )
 
 
@@ -58,6 +60,7 @@ class TestSupabaseMissedQueryStoreSave:
                 answer="respuesta Y",
                 top_score=0.38,
                 detected_area="derecho penal",
+                out_of_scope=True,
             )
         )
 
@@ -69,6 +72,7 @@ class TestSupabaseMissedQueryStoreSave:
             "answer": "respuesta Y",
             "top_score": 0.38,
             "detected_area": "derecho penal",
+            "out_of_scope": True,
         }
 
     def test_sends_auth_and_representation_headers(self, store, mock_http):
