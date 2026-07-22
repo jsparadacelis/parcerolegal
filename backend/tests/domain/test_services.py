@@ -7,6 +7,7 @@ from backend.app.domain.services import (
     extract_sentencia_id,
     filter_by_score,
     is_out_of_scope,
+    sanitize_citations,
 )
 
 
@@ -133,6 +134,47 @@ class TestExtractSentenciaId:
 
     def test_id_without_any_year_returns_none(self):
         assert extract_sentencia_id("¿Qué dice T-760?") is None
+
+
+class TestSanitizeCitations:
+    def test_no_citations_returns_text_unchanged(self):
+        text, invalid = sanitize_citations("No hay citas aquí.", valid_count=5)
+
+        assert text == "No hay citas aquí."
+        assert invalid == []
+
+    def test_citations_within_range_are_kept(self):
+        text, invalid = sanitize_citations("Igualdad [1] y paz [5].", valid_count=5)
+
+        assert text == "Igualdad [1] y paz [5]."
+        assert invalid == []
+
+    def test_citation_of_zero_is_removed(self):
+        text, invalid = sanitize_citations("Dato [0]", valid_count=5)
+
+        assert text == "Dato"
+        assert invalid == [0]
+
+    def test_multiple_invalid_citations_all_removed(self):
+        text, invalid = sanitize_citations(
+            "* Igualdad [1], [13]\n* Paz [1], [22]\n* Integridad personal [12]",
+            valid_count=5,
+        )
+
+        assert text == "* Igualdad [1]\n* Paz [1]\n* Integridad personal"
+        assert invalid == [13, 22, 12]
+
+    def test_invalid_citation_between_two_valid_ones_collapses_comma(self):
+        text, invalid = sanitize_citations("[1], [13], [3]", valid_count=5)
+
+        assert text == "[1], [3]"
+        assert invalid == [13]
+
+    def test_leading_invalid_citation_strips_dangling_comma(self):
+        text, invalid = sanitize_citations("[13], [1]", valid_count=5)
+
+        assert text == "[1]"
+        assert invalid == [13]
 
 
 class TestDedupeSources:

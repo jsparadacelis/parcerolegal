@@ -20,6 +20,12 @@ _SENTENCIA_PATTERN = re.compile(r"\b(T|C|SU)-(\d+)\b", re.IGNORECASE)
 _SHORT_YEAR_PATTERN = re.compile(r"^[-/](\d{2})\b")
 _YEAR_PATTERN = re.compile(r"\b(19|20)\d{2}\b")
 
+_CITATION_PATTERN = re.compile(r"\[(\d+)\]")
+_REPEATED_COMMA_PATTERN = re.compile(r",(?:\s*,)+")
+_LEADING_DANGLING_COMMA_PATTERN = re.compile(r"^[ \t]*,[ \t]*", re.MULTILINE)
+_TRAILING_DANGLING_COMMA_PATTERN = re.compile(r"[ \t]*,[ \t]*$", re.MULTILINE)
+_TRAILING_WHITESPACE_PATTERN = re.compile(r"[ \t]+$", re.MULTILINE)
+
 # Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte
 # + Código Penal Libro II). Orden importa: la primera coincidencia gana. Solo se
 # usa para dar contexto en el mensaje de fuera-de-alcance, nunca decide si se
@@ -100,6 +106,33 @@ def detect_legal_area(question: str) -> str | None:
 
 def is_out_of_scope(filtered_chunks: list[RetrievedChunk]) -> bool:
     return len(filtered_chunks) == 0
+
+
+def sanitize_citations(answer: str, valid_count: int) -> tuple[str, list[int]]:
+    """Remueve citas `[n]` fuera del rango 1..valid_count y limpia la puntuación
+    huérfana que deja la remoción (comas duplicadas o colgantes, espacios sobrantes).
+
+    Devuelve el texto saneado y la lista de índices inválidos encontrados, en
+    orden de aparición — esta última sirve para loguear/medir alucinaciones.
+    """
+    invalid: list[int] = []
+
+    def _replace(match: re.Match[str]) -> str:
+        n = int(match.group(1))
+        if 1 <= n <= valid_count:
+            return match.group(0)
+        invalid.append(n)
+        return ""
+
+    sanitized = _CITATION_PATTERN.sub(_replace, answer)
+    if not invalid:
+        return sanitized, invalid
+
+    sanitized = _REPEATED_COMMA_PATTERN.sub(",", sanitized)
+    sanitized = _LEADING_DANGLING_COMMA_PATTERN.sub("", sanitized)
+    sanitized = _TRAILING_DANGLING_COMMA_PATTERN.sub("", sanitized)
+    sanitized = _TRAILING_WHITESPACE_PATTERN.sub("", sanitized)
+    return sanitized, invalid
 
 
 def extract_sentencia_id(question: str) -> str | None:

@@ -1,6 +1,7 @@
 """Tests for QueryUseCase.execute() — full RAG pipeline."""
 from __future__ import annotations
 
+import logging
 from unittest.mock import create_autospec
 
 import pytest
@@ -362,6 +363,25 @@ class TestPromptConstruction:
 
         assert "[1]" in llm.generate.call_args.kwargs["system"]
 
+    def test_system_role_states_total_fragment_count(self, use_case, store, llm):
+        store.search.return_value = [
+            a_relevant_constitucion_chunk(),
+            another_relevant_constitucion_chunk(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert "[1] a [2]" in llm.generate.call_args.kwargs["system"]
+
+    def test_system_role_prohibits_citations_outside_range(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert "prohibido" in llm.generate.call_args.kwargs["system"].lower()
+
     def test_user_prompt_numbers_fragments(self, use_case, store, llm):
         store.search.return_value = [
             a_relevant_constitucion_chunk(),
@@ -374,6 +394,57 @@ class TestPromptConstruction:
         prompt = llm.generate.call_args.args[0]
         assert "[1]" in prompt
         assert "[2]" in prompt
+
+
+class TestCitationSanitization:
+    def test_removes_hallucinated_citation_from_answer(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "Igualdad [1], [13]"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert result.answer == "Igualdad [1]"
+
+    def test_keeps_valid_citations_when_no_hallucination(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "El habeas corpus protege [1] la libertad."
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert result.answer == "El habeas corpus protege [1] la libertad."
+
+    def test_multiple_hallucinated_citations_all_removed(self, use_case, store, llm):
+        store.search.return_value = [
+            a_relevant_constitucion_chunk(),
+            another_relevant_constitucion_chunk(),
+        ]
+        llm.generate.return_value = "* Igualdad [1], [13]\n* Paz [1], [22]"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert result.answer == "* Igualdad [1]\n* Paz [1]"
+
+    def test_logs_warning_when_hallucinated_citation_detected(
+        self, use_case, store, llm, caplog: pytest.LogCaptureFixture
+    ):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "Igualdad [1], [13]"
+
+        with caplog.at_level(logging.WARNING, logger="parcerolegal"):
+            use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert any(r.levelname == "WARNING" for r in caplog.records)
+
+    def test_does_not_log_warning_when_citations_valid(
+        self, use_case, store, llm, caplog: pytest.LogCaptureFixture
+    ):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta [1]"
+
+        with caplog.at_level(logging.WARNING, logger="parcerolegal"):
+            use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert not any(r.levelname == "WARNING" for r in caplog.records)
 
 
 class TestSentenciaReference:

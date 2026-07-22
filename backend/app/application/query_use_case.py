@@ -25,6 +25,7 @@ from backend.app.domain.services import (
     extract_sentencia_id,
     filter_by_score,
     is_out_of_scope,
+    sanitize_citations,
 )
 
 logger = logging.getLogger("parcerolegal")
@@ -51,12 +52,14 @@ def _build_out_of_scope_answer(question: str) -> str:
         "constitucionales, o consulta a un abogado para tu caso puntual."
     )
 
-_SYSTEM_ROLE = """\
+_SYSTEM_ROLE_TEMPLATE = """\
 Eres un asistente jurídico especializado en derecho constitucional y penal colombiano.
 Responde ÚNICAMENTE basándote en los fragmentos de legislación proporcionados.
 
 Reglas:
+- Tienes exactamente {n} fragmentos, numerados [1] a [{n}].
 - Cita los fragmentos en tu respuesta usando [1], [2], etc.
+- Nunca cites un número de fragmento mayor que {n} ni menor que 1: está prohibido inventar citas.
 - Si el contexto no cubre la pregunta, di: "Esta información no está disponible en los documentos proporcionados."
 - No añadas información externa ni interpretaciones propias.
 - Responde en español, con tono formal pero accesible para no especialistas.
@@ -110,7 +113,15 @@ class QueryUseCase:
             f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
         )
         prompt = _USER_TEMPLATE.format(context=context, question=question)
-        answer = self._llm.generate(prompt, system=_SYSTEM_ROLE)
+        system_role = _SYSTEM_ROLE_TEMPLATE.format(n=len(filtered))
+        answer = self._llm.generate(prompt, system=system_role)
+        answer, invalid_citations = sanitize_citations(answer, valid_count=len(filtered))
+        if invalid_citations:
+            logger.warning(
+                "citas alucinadas detectadas y removidas: %s (fragmentos_disponibles=%d)",
+                invalid_citations,
+                len(filtered),
+            )
         sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
         return QueryResult(
