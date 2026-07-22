@@ -98,33 +98,38 @@ class QueryUseCase:
         filtered = chunks if sentencia_id and chunks else filter_by_score(chunks)
 
         elapsed_ms = lambda: (time.time() - start) * 1000
-        out_of_scope = is_out_of_scope(filtered)
 
-        if out_of_scope:
+        if is_out_of_scope(filtered):
             answer = _build_out_of_scope_answer(question)
-            sources: list[Source] = []
-        else:
-            context = "\n\n".join(
-                f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
+            self._record_query(question, answer, chunks, out_of_scope=True)
+            return QueryResult(
+                answer=answer,
+                sources=[],
+                out_of_scope=True,
+                processing_time_ms=elapsed_ms(),
             )
-            prompt = _USER_TEMPLATE.format(context=context, question=question)
-            system_role = _SYSTEM_ROLE_TEMPLATE.format(n=len(filtered))
-            answer = self._llm.generate(prompt, system=system_role)
-            answer, invalid_citations = sanitize_citations(answer, valid_count=len(filtered))
-            if invalid_citations:
-                logger.warning(
-                    "citas alucinadas detectadas y removidas: %s (fragmentos_disponibles=%d)",
-                    invalid_citations,
-                    len(filtered),
-                )
-            sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
-        self._record_query(question, answer, chunks, out_of_scope)
+        context = "\n\n".join(
+            f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
+        )
+        prompt = _USER_TEMPLATE.format(context=context, question=question)
+        system_role = _SYSTEM_ROLE_TEMPLATE.format(n=len(filtered))
+        answer = self._llm.generate(prompt, system=system_role)
+        answer, invalid_citations = sanitize_citations(answer, valid_count=len(filtered))
+        if invalid_citations:
+            logger.warning(
+                "citas alucinadas detectadas y removidas: %s (fragmentos_disponibles=%d)",
+                invalid_citations,
+                len(filtered),
+            )
+        sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
+
+        self._record_query(question, answer, chunks, out_of_scope=False)
 
         return QueryResult(
             answer=answer,
             sources=sources,
-            out_of_scope=out_of_scope,
+            out_of_scope=False,
             processing_time_ms=elapsed_ms(),
         )
 
