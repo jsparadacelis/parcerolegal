@@ -1,7 +1,8 @@
 """Tests for domain services — score filtering and out-of-scope detection."""
 
-from backend.app.domain.entities import RetrievedChunk
+from backend.app.domain.entities import RetrievedChunk, Source
 from backend.app.domain.services import (
+    dedupe_sources,
     detect_legal_area,
     extract_sentencia_id,
     filter_by_score,
@@ -13,6 +14,24 @@ from backend.app.domain.services import (
 def _chunk(score: float, chunk_id: str = "c1") -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id=chunk_id, text="text", score=score, source_type="constitucion"
+    )
+
+
+def a_sentencia_source(chunk_id: str = "c1", sentencia_id: str = "T-622-16") -> Source:
+    return Source(
+        chunk_id=chunk_id,
+        source_type="sentencia",
+        title=sentencia_id,
+        url=f"http://corte.gov.co/{sentencia_id}",
+    )
+
+
+def a_constitucion_source(chunk_id: str = "c1", article: str = "30") -> Source:
+    return Source(
+        chunk_id=chunk_id,
+        source_type="constitucion",
+        title=f"Art. {article} — Título",
+        url=f"http://example.com/art{article}",
     )
 
 
@@ -81,11 +100,11 @@ class TestDetectLegalArea:
         assert area is not None
         assert "Trabajo" in area
 
-    def test_criminal_topic_maps_to_penal_code(self):
-        area = detect_legal_area("¿qué pena tiene el hurto?")
-
-        assert area is not None
-        assert "Penal" in area
+    def test_criminal_topic_no_longer_out_of_scope(self):
+        """Decisión 2026-07-15: el Código Penal (Libro II) entró al corpus, así
+        que preguntas de hurto/homicidio ya no se redirigen como fuera de
+        alcance — deben resolverse por retrieval normal."""
+        assert detect_legal_area("¿qué pena tiene el hurto?") is None
 
     def test_constitutional_question_returns_none(self):
         assert detect_legal_area("¿qué es la acción de tutela?") is None
@@ -156,3 +175,30 @@ class TestSanitizeCitations:
 
         assert text == "[1]"
         assert invalid == [13]
+
+
+class TestDedupeSources:
+    def test_collapses_duplicate_keeping_first_in_order(self):
+        sources = [
+            a_sentencia_source(chunk_id="s1", sentencia_id="T-622-16"),
+            a_constitucion_source(chunk_id="a1", article="44"),
+            a_sentencia_source(chunk_id="s2", sentencia_id="T-622-16"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert [s.chunk_id for s in result] == ["s1", "a1"]
+
+    def test_keeps_all_distinct_documents(self):
+        sources = [
+            a_sentencia_source(sentencia_id="T-622-16"),
+            a_constitucion_source(article="44"),
+            a_sentencia_source(sentencia_id="C-355-06"),
+        ]
+
+        result = dedupe_sources(sources)
+
+        assert len(result) == 3
+
+    def test_empty_list_returns_empty(self):
+        assert dedupe_sources([]) == []

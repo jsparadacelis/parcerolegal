@@ -64,8 +64,26 @@ def build_payload(chunk: dict) -> dict:
         payload["tema"] = chunk["tema"]
         payload["seccion"] = chunk["seccion"]
         payload["source_url"] = chunk["source_url"]
+    elif chunk["source_type"] == "codigo_penal":
+        payload["article_id"] = chunk["article_id"]
+        payload["article_numero"] = chunk["article_numero"]
+        payload["sufijo"] = chunk.get("sufijo")
+        payload["nombre"] = chunk.get("nombre")
+        payload["titulo"] = chunk["titulo"]
+        payload["capitulo"] = chunk.get("capitulo")
+        payload["url_original"] = chunk["url_original"]
 
     return payload
+
+
+def filter_chunks_by_source_type(
+    chunks: list[dict], source_types: set[str] | None
+) -> list[dict]:
+    """Permite un embed incremental (ej. solo 'codigo_penal' tras agregar el
+    corpus nuevo) sin re-embeber chunks ya subidos. None = sin filtro."""
+    if source_types is None:
+        return chunks
+    return [c for c in chunks if c["source_type"] in source_types]
 
 
 def create_collection(client: QdrantClient, collection_name: str) -> None:
@@ -100,10 +118,19 @@ def main() -> None:
     chunks = load_chunks(CHUNKS_PATH)
     print(f"  {len(chunks)} chunks cargados")
 
+    source_types_env = os.getenv("EMBED_SOURCE_TYPES")
+    if source_types_env:
+        source_types = set(source_types_env.split(","))
+        chunks = filter_chunks_by_source_type(chunks, source_types)
+        print(f"  Filtrado a {source_types} → {len(chunks)} chunks")
+
     print(f"\nConectando a Qdrant...")
+    # timeout=60: el default del cliente (5s) da WriteTimeout al subir batches de
+    # 100 puntos × 1024 dims — el POST tarda más que eso en salir por esta red.
     client = QdrantClient(
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY"),
+        timeout=60,
     )
 
     if client.collection_exists(COLLECTION_NAME):

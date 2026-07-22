@@ -6,6 +6,7 @@ import logging
 import time
 
 from backend.app.domain.entities import (
+    SOURCE_TYPE_CODIGO_PENAL,
     SOURCE_TYPE_CONSTITUCION,
     MissedQuery,
     QueryResult,
@@ -19,6 +20,7 @@ from backend.app.domain.ports import (
     VectorStore,
 )
 from backend.app.domain.services import (
+    dedupe_sources,
     detect_legal_area,
     extract_sentencia_id,
     filter_by_score,
@@ -28,7 +30,10 @@ from backend.app.domain.services import (
 
 logger = logging.getLogger("parcerolegal")
 
-_SCOPE = "la Constitución Política de Colombia y las sentencias de la Corte Constitucional"
+_SCOPE = (
+    "la Constitución Política de Colombia, las sentencias de la Corte "
+    "Constitucional y el Código Penal (delitos y sus penas)"
+)
 
 
 def _build_out_of_scope_answer(question: str) -> str:
@@ -48,7 +53,7 @@ def _build_out_of_scope_answer(question: str) -> str:
     )
 
 _SYSTEM_ROLE_TEMPLATE = """\
-Eres un asistente jurídico especializado en derecho constitucional colombiano.
+Eres un asistente jurídico especializado en derecho constitucional y penal colombiano.
 Responde ÚNICAMENTE basándote en los fragmentos de legislación proporcionados.
 
 Reglas:
@@ -117,7 +122,7 @@ class QueryUseCase:
                 invalid_citations,
                 len(filtered),
             )
-        sources = [_chunk_to_source(chunk) for chunk in filtered]
+        sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
         return QueryResult(
             answer=answer,
@@ -156,6 +161,9 @@ def _chunk_to_source(chunk: RetrievedChunk) -> Source:
         titulo = chunk.metadata.get("titulo", "")
         title = f"Art. {article_numero} — {titulo}" if article_numero else titulo
         url = chunk.metadata.get("url_original", "")
+    elif chunk.source_type == SOURCE_TYPE_CODIGO_PENAL:
+        title = _codigo_penal_title(chunk.metadata)
+        url = chunk.metadata.get("url_original", "")
     else:
         title = chunk.metadata.get("sentencia_id", "")
         url = chunk.metadata.get("source_url", "")
@@ -166,3 +174,18 @@ def _chunk_to_source(chunk: RetrievedChunk) -> Source:
         title=title,
         url=url,
     )
+
+
+def _codigo_penal_title(metadata: dict) -> str:
+    """'Art. 239 CP — Hurto' — o solo 'Art. 447A CP' si 'nombre' quedó vacío en
+    el scraper (~50/480 artículos, ver .aiplans/scrape-codigo-penal): sin <em>
+    ni nombre reconocible en el <strong> de encabezado."""
+    article_numero = metadata.get("article_numero", "")
+    sufijo = metadata.get("sufijo") or ""
+    nombre = metadata.get("nombre") or ""
+    numero_label = f"{article_numero}{sufijo}"
+    if not numero_label:
+        return nombre
+    if nombre:
+        return f"Art. {numero_label} CP — {nombre}"
+    return f"Art. {numero_label} CP"

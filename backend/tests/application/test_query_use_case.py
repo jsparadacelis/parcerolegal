@@ -58,11 +58,70 @@ def an_irrelevant_chunk() -> RetrievedChunk:
     )
 
 
+def a_codigo_penal_chunk() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c7",
+        text="El que se apodere de una cosa mueble ajena incurrirá en prisión.",
+        score=0.77,
+        source_type="codigo_penal",
+        metadata={
+            "article_numero": 239,
+            "sufijo": None,
+            "nombre": "Hurto",
+            "url_original": "http://example.com/codigo_penal#239",
+        },
+    )
+
+
+def a_codigo_penal_chunk_with_sufijo() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c8",
+        text="Quien causare la muerte a una mujer por su condición de ser mujer.",
+        score=0.81,
+        source_type="codigo_penal",
+        metadata={
+            "article_numero": 104,
+            "sufijo": "A",
+            "nombre": "Feminicidio",
+            "url_original": "http://example.com/codigo_penal#104A",
+        },
+    )
+
+
+def a_codigo_penal_chunk_without_nombre() -> RetrievedChunk:
+    """Simula uno de los ~50/480 artículos donde 'nombre' quedó vacío en el
+    scraper (ver .aiplans/scrape-codigo-penal) — el título debe degradar con
+    gracia, sin guion colgante ni 'None' visible."""
+    return RetrievedChunk(
+        chunk_id="c9",
+        text="Artículo derogado por el artículo 56 de la Ley 1762 de 2015.",
+        score=0.75,
+        source_type="codigo_penal",
+        metadata={
+            "article_numero": 447,
+            "sufijo": "A",
+            "nombre": "",
+            "url_original": "http://example.com/codigo_penal#447A",
+        },
+    )
+
+
 def a_sentencia_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c3",
         text="La sentencia T-760 protege la salud.",
         score=0.79,
+        source_type="sentencia",
+        metadata={"sentencia_id": "T-760-2008", "source_url": "http://corte.gov.co/T-760"},
+    )
+
+
+def another_chunk_of_same_sentencia() -> RetrievedChunk:
+    """Otro fragmento de la MISMA sentencia que a_sentencia_chunk (mismo id/url)."""
+    return RetrievedChunk(
+        chunk_id="c6",
+        text="Otro considerando de la sentencia T-760.",
+        score=0.71,
         source_type="sentencia",
         metadata={"sentencia_id": "T-760-2008", "source_url": "http://corte.gov.co/T-760"},
     )
@@ -167,6 +226,74 @@ class TestSourceMapping:
         assert source.source_type == "sentencia"
         assert source.title == "T-760-2008"
         assert source.url == "http://corte.gov.co/T-760"
+
+    def test_sources_built_from_codigo_penal_chunk(self, use_case, store, llm):
+        store.search.return_value = [a_codigo_penal_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué pena tiene el hurto?")
+
+        source = result.sources[0]
+        assert source.source_type == "codigo_penal"
+        assert source.title == "Art. 239 CP — Hurto"
+        assert source.url == "http://example.com/codigo_penal#239"
+
+    def test_codigo_penal_source_title_includes_sufijo(self, use_case, store, llm):
+        store.search.return_value = [a_codigo_penal_chunk_with_sufijo()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué es el feminicidio?")
+
+        assert result.sources[0].title == "Art. 104A CP — Feminicidio"
+
+    def test_codigo_penal_source_title_degrades_without_nombre(self, use_case, store, llm):
+        store.search.return_value = [a_codigo_penal_chunk_without_nombre()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué dice el artículo 447A?")
+
+        title = result.sources[0].title
+        assert title == "Art. 447A CP"
+        assert "None" not in title
+        assert not title.endswith("—")
+
+
+class TestSourceDeduplication:
+    def test_repeated_document_appears_once_in_sources(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            another_chunk_of_same_sentencia(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué protege T-760?")
+
+        assert len(result.sources) == 1
+        assert result.sources[0].title == "T-760-2008"
+
+    def test_distinct_documents_are_all_kept(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            a_relevant_constitucion_chunk(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué protege T-760?")
+
+        assert len(result.sources) == 2
+
+    def test_all_fragments_still_reach_the_llm(self, use_case, store, llm):
+        store.search.return_value = [
+            a_sentencia_chunk(),
+            another_chunk_of_same_sentencia(),
+        ]
+        llm.generate.return_value = "respuesta"
+
+        use_case.execute("¿Qué protege T-760?")
+
+        prompt = llm.generate.call_args.args[0]
+        assert "La sentencia T-760 protege la salud." in prompt
+        assert "Otro considerando de la sentencia T-760." in prompt
 
 
 class TestOutOfScope:
