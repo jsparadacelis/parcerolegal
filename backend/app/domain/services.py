@@ -135,6 +135,22 @@ def sanitize_citations(answer: str, valid_count: int) -> tuple[str, list[int]]:
     return sanitized, invalid
 
 
+def is_single_document_answer(sources: list[Source]) -> bool:
+    """Verdadero cuando hay 2+ fuentes y todas apuntan al mismo documento.
+
+    Señal de que el retrieval no encontró diversidad real de contenido: el
+    `top_k` completo (pensado para traer fragmentos diversos) colapsó en un
+    solo documento (p.ej. una sola sentencia), lo que sugiere que el corpus no
+    cubre el tema en general y lo recuperado coincidió por cercanía semántica
+    puntual. Una sola fuente no cuenta — ahí sí es normal y esperado que un
+    único documento responda bien la pregunta.
+    """
+    if len(sources) < 2:
+        return False
+    keys = {(s.source_type, s.title, s.url) for s in sources}
+    return len(keys) == 1
+
+
 def extract_sentencia_id(question: str) -> str | None:
     match = _SENTENCIA_PATTERN.search(question)
     if not match:

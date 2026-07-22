@@ -7,6 +7,7 @@ from backend.app.domain.services import (
     extract_sentencia_id,
     filter_by_score,
     is_out_of_scope,
+    is_single_document_answer,
     sanitize_citations,
 )
 
@@ -202,3 +203,27 @@ class TestDedupeSources:
 
     def test_empty_list_returns_empty(self):
         assert dedupe_sources([]) == []
+
+
+class TestIsSingleDocumentAnswer:
+    def test_empty_list_returns_false(self):
+        assert is_single_document_answer([]) is False
+
+    def test_single_source_returns_false(self):
+        assert is_single_document_answer([a_sentencia_source()]) is False
+
+    def test_two_sources_same_document_returns_true(self):
+        sources = [
+            a_sentencia_source(chunk_id="s1", sentencia_id="SU-070-13"),
+            a_sentencia_source(chunk_id="s2", sentencia_id="SU-070-13"),
+        ]
+
+        assert is_single_document_answer(sources) is True
+
+    def test_two_sources_different_documents_returns_false(self):
+        sources = [
+            a_sentencia_source(sentencia_id="SU-070-13"),
+            a_constitucion_source(article="53"),
+        ]
+
+        assert is_single_document_answer(sources) is False
