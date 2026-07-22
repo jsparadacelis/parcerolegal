@@ -98,61 +98,60 @@ class QueryUseCase:
         filtered = chunks if sentencia_id and chunks else filter_by_score(chunks)
 
         elapsed_ms = lambda: (time.time() - start) * 1000
+        out_of_scope = is_out_of_scope(filtered)
 
-        if is_out_of_scope(filtered):
+        if out_of_scope:
             answer = _build_out_of_scope_answer(question)
-            self._record_missed_query(question, answer, chunks)
-            return QueryResult(
-                answer=answer,
-                sources=[],
-                out_of_scope=True,
-                processing_time_ms=elapsed_ms(),
+            sources: list[Source] = []
+        else:
+            context = "\n\n".join(
+                f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
             )
+            prompt = _USER_TEMPLATE.format(context=context, question=question)
+            system_role = _SYSTEM_ROLE_TEMPLATE.format(n=len(filtered))
+            answer = self._llm.generate(prompt, system=system_role)
+            answer, invalid_citations = sanitize_citations(answer, valid_count=len(filtered))
+            if invalid_citations:
+                logger.warning(
+                    "citas alucinadas detectadas y removidas: %s (fragmentos_disponibles=%d)",
+                    invalid_citations,
+                    len(filtered),
+                )
+            sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
 
-        context = "\n\n".join(
-            f"[{i + 1}] {chunk.text}" for i, chunk in enumerate(filtered)
-        )
-        prompt = _USER_TEMPLATE.format(context=context, question=question)
-        system_role = _SYSTEM_ROLE_TEMPLATE.format(n=len(filtered))
-        answer = self._llm.generate(prompt, system=system_role)
-        answer, invalid_citations = sanitize_citations(answer, valid_count=len(filtered))
-        if invalid_citations:
-            logger.warning(
-                "citas alucinadas detectadas y removidas: %s (fragmentos_disponibles=%d)",
-                invalid_citations,
-                len(filtered),
-            )
-        sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
+        self._record_query(question, answer, chunks, out_of_scope)
 
         return QueryResult(
             answer=answer,
             sources=sources,
-            out_of_scope=False,
+            out_of_scope=out_of_scope,
             processing_time_ms=elapsed_ms(),
         )
 
-    def _record_missed_query(
+    def _record_query(
         self,
         question: str,
         answer: str,
         chunks: list[RetrievedChunk],
+        out_of_scope: bool,
     ) -> None:
-        """Persiste la pregunta fuera de alcance best-effort.
+        """Persiste la consulta respondida, best-effort.
 
         Fire-and-forget: cualquier fallo se loguea pero jamás rompe la respuesta.
         """
         if self._missed_query_store is None:
             return
-        missed = MissedQuery(
+        record = MissedQuery(
             question=question,
             answer=answer,
             top_score=chunks[0].score if chunks else None,
             detected_area=detect_legal_area(question),
+            out_of_scope=out_of_scope,
         )
         try:
-            self._missed_query_store.save(missed)
+            self._missed_query_store.save(record)
         except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
-            logger.exception("no se pudo guardar la pregunta fuera de alcance")
+            logger.exception("no se pudo guardar la consulta")
 
 
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:

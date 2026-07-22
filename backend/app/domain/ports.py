@@ -25,7 +25,7 @@ class LLMClient(Protocol):
 
 
 class MissedQueryStore(Protocol):
-    """Persistencia best-effort de preguntas fuera de alcance.
+    """Persistencia best-effort de todas las consultas respondidas.
 
     Contrato: `save` es fire-and-forget — no debe bloquear la respuesta al
     usuario ni propagar excepciones. El use case además la envuelve de forma

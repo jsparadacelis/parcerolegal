@@ -70,9 +70,11 @@ def missed_query_store() -> SupabaseMissedQueryStore:
     return SupabaseMissedQueryStore(url=_SUPABASE_URL, api_key="test-key")
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_http():
-    with responses.RequestsMock() as r:
+    """Toda consulta se persiste ahora, así que ninguna llamada debe llegar a la red real."""
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as r:
+        r.add(responses.POST, _SUPABASE_INSERT_URL, status=201)
         yield r
 
 
@@ -174,7 +176,6 @@ class TestQueryEndpoint:
 
     def test_out_of_scope_returns_true(self, client: TestClient, store, mock_http):
         store.search.return_value = [a_low_score_chunk()]
-        mock_http.add(responses.POST, _SUPABASE_INSERT_URL, status=201)
 
         response = client.post("/api/query", json={"question": "¿Cuánto cuesta el arroz?"})
         data = response.json()
@@ -185,15 +186,22 @@ class TestQueryEndpoint:
         # sin afectar la respuesta al usuario (200 + out_of_scope).
         assert response.status_code == 200
         assert mock_http.calls[0].request.url == _SUPABASE_INSERT_URL
-        assert json.loads(mock_http.calls[0].request.body)["question"] == "¿Cuánto cuesta el arroz?"
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert sent["question"] == "¿Cuánto cuesta el arroz?"
+        assert sent["out_of_scope"] is True
 
-    def test_in_scope_out_of_scope_is_false(self, client: TestClient, store, llm):
+    def test_in_scope_out_of_scope_is_false(self, client: TestClient, store, llm, mock_http):
         store.search.return_value = [a_relevant_chunk()]
         llm.generate.return_value = _ANSWER
 
         data = client.post("/api/query", json={"question": _QUESTION}).json()
 
         assert data["out_of_scope"] is False
+        # las respuestas en alcance también se persisten ahora, no solo las que
+        # caían bajo el umbral.
+        assert mock_http.calls[0].request.url == _SUPABASE_INSERT_URL
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert sent["out_of_scope"] is False
 
 
 class TestCORS:

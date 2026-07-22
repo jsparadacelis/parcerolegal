@@ -25,6 +25,7 @@ def a_missed_query() -> MissedQuery:
         answer="fuera de alcance...",
         top_score=0.30,
         detected_area=None,
+        out_of_scope=True,
     )
 
 
