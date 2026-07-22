@@ -25,6 +25,7 @@ from backend.app.domain.services import (
     extract_sentencia_id,
     filter_by_score,
     is_out_of_scope,
+    is_single_document_answer,
     sanitize_citations,
 )
 
@@ -60,6 +61,7 @@ Reglas:
 - Tienes exactamente {n} fragmentos, numerados [1] a [{n}].
 - Cita los fragmentos en tu respuesta usando [1], [2], etc.
 - Nunca cites un número de fragmento mayor que {n} ni menor que 1: está prohibido inventar citas.
+- Si los fragmentos entregados provienen de un único caso judicial con circunstancias específicas (p. ej., un grupo protegido o una situación particular), acláralo en tu respuesta y no la presentes como una regla general aplicable a todos los casos.
 - Si el contexto no cubre la pregunta, di: "Esta información no está disponible en los documentos proporcionados."
 - No añadas información externa ni interpretaciones propias.
 - Responde en español, con tono formal pero accesible para no especialistas.
@@ -122,7 +124,13 @@ class QueryUseCase:
                 invalid_citations,
                 len(filtered),
             )
-        sources = dedupe_sources([_chunk_to_source(chunk) for chunk in filtered])
+        raw_sources = [_chunk_to_source(chunk) for chunk in filtered]
+        sources = dedupe_sources(raw_sources)
+
+        if sentencia_id is None:
+            area = detect_legal_area(question)
+            if area and is_single_document_answer(raw_sources):
+                answer = _append_narrow_source_caveat(answer, area, sources[0].title)
 
         self._record_query(question, answer, chunks, out_of_scope=False)
 
@@ -157,6 +165,19 @@ class QueryUseCase:
             self._missed_query_store.save(record)
         except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
             logger.exception("no se pudo guardar la consulta")
+
+
+def _append_narrow_source_caveat(answer: str, area: str, document_title: str) -> str:
+    """Advierte cuando toda la respuesta descansa en un único documento (p.ej.
+    una sentencia sobre un caso puntual) para una pregunta de un área que el
+    corpus no cubre en general (ver `_LEGAL_AREAS`)."""
+    return (
+        f"{answer}\n\n"
+        f"**Nota:** esta respuesta se basa únicamente en {document_title}, un caso "
+        f"judicial puntual, no en la norma general de {area}. Si tu situación no "
+        "coincide exactamente con ese caso, te recomendamos revisar la normativa "
+        "correspondiente o consultar a un abogado."
+    )
 
 
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:

@@ -447,6 +447,57 @@ class TestCitationSanitization:
         assert not any(r.levelname == "WARNING" for r in caplog.records)
 
 
+class TestNarrowSourceCaveat:
+    """Caso reportado 2026-07-22: 'Me pueden despedir sin justa causa' devolvía la
+    doctrina de fuero de maternidad (SU-070-13) como si fuera la regla general de
+    despido, sin aclarar que el corpus no cubre derecho laboral general y que la
+    respuesta vino de un único caso puntual. Ver .aiplans/narrow-single-document-caveat.
+    """
+
+    _LABOR_QUESTION = "¿Me pueden despedir sin justa causa?"
+
+    def test_adds_caveat_when_single_document_matches_excluded_area(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(self._LABOR_QUESTION)
+
+        assert "T-760-2008" in result.answer
+        assert "laboral" in result.answer.lower()
+
+    def test_no_caveat_when_sources_are_diverse(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk(), a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(self._LABOR_QUESTION)
+
+        assert result.answer == "respuesta"
+
+    def test_no_caveat_when_only_one_chunk_retrieved(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(self._LABOR_QUESTION)
+
+        assert result.answer == "respuesta"
+
+    def test_no_caveat_when_question_matches_no_excluded_area(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué protege la sentencia sobre la salud?")
+
+        assert result.answer == "respuesta"
+
+    def test_no_caveat_when_user_explicitly_asked_for_that_sentencia(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(_SENTENCIA_QUESTION)
+
+        assert result.answer == "respuesta"
+
+
 class TestSentenciaReference:
     def test_passes_extracted_sentencia_id_to_store(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk()]
