@@ -37,6 +37,23 @@ class QueryResult:
 
 
 @dataclass(frozen=True)
+class SharedAnswer:
+    """Una respuesta publicada bajo un link compartible (GET /api/shares/{id}).
+
+    `id` lo genera el backend (token corto url-safe, ver
+    `application.share_answer_use_case`), nunca el cliente: así el contenido
+    servido en el link siempre proviene de una ejecución real del pipeline
+    RAG, nunca de texto arbitrario enviado por quien comparte.
+    """
+
+    id: str
+    question: str
+    answer: str
+    sources: list[Source]
+    out_of_scope: bool
+
+
+@dataclass(frozen=True)
 class MissedQuery:
     """Una consulta respondida por el sistema, persistida best-effort.
 

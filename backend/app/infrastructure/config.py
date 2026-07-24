@@ -28,6 +28,11 @@ GROQ_RETRY_BASE_DELAY_SECONDS = 1.0
 # --- Retrieval -------------------------------------------------------------
 DEFAULT_TOP_K = 5
 
+# --- Compartir ---------------------------------------------------------------
+# nbytes para secrets.token_urlsafe → ~11 caracteres, 64 bits de entropía,
+# suficiente para que un share_id no sea adivinable/enumerable.
+SHARE_ID_BYTES = 8
+
 # --- Códigos de estado HTTP ------------------------------------------------
 HTTP_TOO_MANY_REQUESTS = 429
 HTTP_SERVICE_UNAVAILABLE = 503
@@ -61,6 +66,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_missed_queries_table: str = "missed_queries"
+    supabase_shared_answers_table: str = "shared_answers"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

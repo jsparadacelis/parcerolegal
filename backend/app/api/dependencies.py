@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from fastapi import HTTPException
+
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.domain.ports import MissedQueryStore
+from backend.app.application.share_answer_use_case import ShareAnswerUseCase
+from backend.app.domain.ports import MissedQueryStore, SharedAnswerStore
 from backend.app.infrastructure.background_missed_query_store import (
     BackgroundMissedQueryStore,
 )
@@ -15,6 +18,9 @@ from backend.app.infrastructure.jina_embedder import JinaEmbedder
 from backend.app.infrastructure.qdrant_store import QdrantVectorStore
 from backend.app.infrastructure.supabase_missed_query_store import (
     SupabaseMissedQueryStore,
+)
+from backend.app.infrastructure.supabase_shared_answer_store import (
+    SupabaseSharedAnswerStore,
 )
 
 
@@ -63,3 +69,27 @@ def get_use_case() -> QueryUseCase:
         top_k=settings.top_k,
         missed_query_store=_build_missed_query_store(settings),
     )
+
+
+def _build_shared_answer_store(settings: Settings) -> SharedAnswerStore | None:
+    """None si Supabase no está configurado (dev/local sin credenciales)."""
+    if not (settings.supabase_url and settings.supabase_key):
+        return None
+    return SupabaseSharedAnswerStore(
+        url=settings.supabase_url,
+        api_key=settings.supabase_key,
+        table=settings.supabase_shared_answers_table,
+    )
+
+
+@lru_cache
+def get_shared_answer_store() -> SharedAnswerStore:
+    store = _build_shared_answer_store(get_settings())
+    if store is None:
+        raise HTTPException(status_code=503, detail="Compartir no está disponible en este momento.")
+    return store
+
+
+@lru_cache
+def get_share_use_case() -> ShareAnswerUseCase:
+    return ShareAnswerUseCase(query_use_case=get_use_case(), store=get_shared_answer_store())
