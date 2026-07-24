@@ -7,6 +7,7 @@ import time
 
 from backend.app.domain.entities import (
     SOURCE_TYPE_CODIGO_PENAL,
+    SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
     MissedQuery,
     QueryResult,
@@ -33,7 +34,8 @@ logger = logging.getLogger("parcerolegal")
 
 _SCOPE = (
     "la Constitución Política de Colombia, las sentencias de la Corte "
-    "Constitucional y el Código Penal (delitos y sus penas)"
+    "Constitucional, el Código Penal (delitos y sus penas) y el Código "
+    "Sustantivo del Trabajo (contrato de trabajo, despido y derecho colectivo)"
 )
 
 
@@ -54,7 +56,7 @@ def _build_out_of_scope_answer(question: str) -> str:
     )
 
 _SYSTEM_ROLE_TEMPLATE = """\
-Eres un asistente jurídico especializado en derecho constitucional y penal colombiano.
+Eres un asistente jurídico especializado en derecho constitucional, penal y laboral colombiano.
 Responde ÚNICAMENTE basándote en los fragmentos de legislación proporcionados.
 
 Reglas:
@@ -189,6 +191,9 @@ def _chunk_to_source(chunk: RetrievedChunk) -> Source:
     elif chunk.source_type == SOURCE_TYPE_CODIGO_PENAL:
         title = _codigo_penal_title(chunk.metadata)
         url = chunk.metadata.get("url_original", "")
+    elif chunk.source_type == SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO:
+        title = _cst_title(chunk.metadata)
+        url = chunk.metadata.get("url_original", "")
     else:
         title = chunk.metadata.get("sentencia_id", "")
         url = chunk.metadata.get("source_url", "")
@@ -214,3 +219,19 @@ def _codigo_penal_title(metadata: dict) -> str:
     if nombre:
         return f"Art. {numero_label} CP — {nombre}"
     return f"Art. {numero_label} CP"
+
+
+def _cst_title(metadata: dict) -> str:
+    """'Art. 64 CST — Terminación Unilateral...' — o solo 'Art. 391-1 CST' si
+    'nombre' quedó vacío en el scraper (ver
+    .aiplans/ingest-codigo-sustantivo-trabajo), mismo criterio de degradación
+    que _codigo_penal_title."""
+    article_numero = metadata.get("article_numero", "")
+    sufijo = metadata.get("sufijo") or ""
+    nombre = metadata.get("nombre") or ""
+    numero_label = f"{article_numero}-{sufijo}" if sufijo else f"{article_numero}"
+    if not numero_label:
+        return nombre
+    if nombre:
+        return f"Art. {numero_label} CST — {nombre}"
+    return f"Art. {numero_label} CST"

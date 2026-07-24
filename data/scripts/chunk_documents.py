@@ -6,6 +6,7 @@ from pathlib import Path
 CONSTITUCION_PATH = Path("data/processed/constitucion.json")
 SENTENCIAS_DIR = Path("data/processed/sentencias")
 CODIGO_PENAL_PATH = Path("data/processed/codigo_penal.json")
+CODIGO_SUSTANTIVO_TRABAJO_PATH = Path("data/processed/codigo_sustantivo_trabajo.json")
 OUTPUT_PATH = Path("data/processed/chunks.json")
 
 CHUNK_MAX = 1000
@@ -145,6 +146,42 @@ def chunk_codigo_penal(codigo_penal_path: Path) -> list[dict]:
     return chunks
 
 
+def chunk_codigo_sustantivo_trabajo(codigo_sustantivo_trabajo_path: Path) -> list[dict]:
+    data = json.loads(codigo_sustantivo_trabajo_path.read_text(encoding="utf-8"))
+    chunks: list[dict] = []
+
+    for article in data["articles"]:
+        text = article["texto"].strip()
+        if not text:
+            # Varios artículos del CST fueron íntegramente derogados (ej. la
+            # sección de contrato de aprendizaje, derogada por la Ley 1429 de
+            # 2010) y su único "texto" en la fuente es la nota de derogatoria,
+            # ya vacía tras el strip del scraper. Sin contenido sustantivo que
+            # retrieval pueda citar como norma vigente.
+            continue
+
+        parts = split_text(text)
+        for i, part in enumerate(parts):
+            chunks.append({
+                # article['id'] (no 'numero') porque numero no es único entre
+                # un artículo base y sus sufijos (ej. cst_art_391 y
+                # cst_art_391_1 comparten numero=391).
+                "chunk_id": f"codigo_sustantivo_trabajo_{article['id']}_{i}",
+                "text": part,
+                "source_type": "codigo_sustantivo_trabajo",
+                "article_id": article["id"],
+                "article_numero": article["numero"],
+                "sufijo": article.get("sufijo"),
+                "nombre": article.get("nombre"),
+                "parte": article["parte"],
+                "titulo": article["titulo"],
+                "capitulo": article.get("capitulo"),
+                "url_original": article["url_original"],
+            })
+
+    return chunks
+
+
 def chunk_sentencia(sentencia_path: Path) -> list[dict]:
     data = json.loads(sentencia_path.read_text(encoding="utf-8"))
     meta = data["metadata"]
@@ -183,8 +220,14 @@ def build_output(
     constitucion_chunks: list[dict],
     sentencia_chunks: list[dict],
     codigo_penal_chunks: list[dict],
+    codigo_sustantivo_trabajo_chunks: list[dict],
 ) -> dict:
-    all_chunks = constitucion_chunks + sentencia_chunks + codigo_penal_chunks
+    all_chunks = (
+        constitucion_chunks
+        + sentencia_chunks
+        + codigo_penal_chunks
+        + codigo_sustantivo_trabajo_chunks
+    )
     return {
         "metadata": {
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -193,6 +236,7 @@ def build_output(
                 "constitucion": len(constitucion_chunks),
                 "sentencias": len(sentencia_chunks),
                 "codigo_penal": len(codigo_penal_chunks),
+                "codigo_sustantivo_trabajo": len(codigo_sustantivo_trabajo_chunks),
             },
         },
         "chunks": all_chunks,
@@ -212,7 +256,11 @@ def main() -> None:
     cp_chunks = chunk_codigo_penal(CODIGO_PENAL_PATH)
     print(f"  {len(cp_chunks)} chunks de código penal")
 
-    output = build_output(const_chunks, sent_chunks, cp_chunks)
+    print("Chunking código sustantivo del trabajo...")
+    cst_chunks = chunk_codigo_sustantivo_trabajo(CODIGO_SUSTANTIVO_TRABAJO_PATH)
+    print(f"  {len(cst_chunks)} chunks de código sustantivo del trabajo")
+
+    output = build_output(const_chunks, sent_chunks, cp_chunks, cst_chunks)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(

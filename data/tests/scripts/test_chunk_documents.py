@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from data.scripts.chunk_documents import chunk_codigo_sustantivo_trabajo
+
 
 # ---------------------------------------------------------------------------
 # split_text
@@ -403,14 +405,148 @@ class TestChunkCodigoPenal:
 
 
 # ---------------------------------------------------------------------------
+# chunk_codigo_sustantivo_trabajo
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_codigo_sustantivo_trabajo(tmp_path):
+    data = {
+        "metadata": {
+            "title": "Código Sustantivo del Trabajo (Decreto 2663 de 1950)",
+            "source_url": "https://example.com",
+            "total_articles": 3,
+        },
+        "articles": [
+            {
+                "id": "cst_art_64",
+                "numero": 64,
+                "sufijo": None,
+                "nombre": "Terminacion Unilateral Del Contrato De Trabajo Sin Justa Causa",
+                "parte": "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO",
+                "titulo": "TITULO VIII. TERMINACION DEL CONTRATO DE TRABAJO",
+                "capitulo": "CAPITULO VI. TERMINACION UNILATERAL SIN JUSTA CAUSA",
+                "texto": "En todo contrato de trabajo va envuelta la condición resolutoria por incumplimiento de lo pactado, con indemnización de perjuicios a cargo de la parte responsable.",
+                "url_original": "https://example.com#64",
+            },
+            {
+                "id": "cst_art_61",
+                "numero": 61,
+                "sufijo": None,
+                "nombre": "Terminacion Del Contrato",
+                "parte": "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO",
+                "titulo": "TITULO VIII. TERMINACION DEL CONTRATO DE TRABAJO",
+                "capitulo": "CAPITULO V. JUSTAS CAUSAS PARA DAR POR TERMINADO EL CONTRATO",
+                "texto": " ".join(
+                    ["Causal número %d de terminación del contrato de trabajo." % i for i in range(30)]
+                ),
+                "url_original": "https://example.com#61",
+            },
+            {
+                "id": "cst_art_391_1",
+                "numero": 391,
+                "sufijo": "1",
+                "nombre": "Directivas Seccionales",
+                "parte": "SEGUNDA PARTE. DERECHO COLECTIVO DEL TRABAJO",
+                "titulo": "TITULO I. SINDICATOS",
+                "capitulo": "CAPITULO I. DISPOSICIONES GENERALES",
+                "texto": "Todo sindicato podrá prever en sus estatutos la creación de Subdirectivas Seccionales.",
+                "url_original": "https://example.com#391-1",
+            },
+            {
+                "id": "cst_art_72",
+                "numero": 72,
+                "sufijo": None,
+                "nombre": "",
+                "parte": "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO",
+                "titulo": "TITULO VIII. TERMINACION DEL CONTRATO DE TRABAJO",
+                "capitulo": None,
+                "texto": "",
+                "url_original": "https://example.com#72",
+            },
+        ],
+    }
+    path = tmp_path / "codigo_sustantivo_trabajo.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+class TestChunkCodigoSustantivoTrabajo:
+    def _chunk(self, path):
+        return chunk_codigo_sustantivo_trabajo(path)
+
+    def test_returns_list_of_dicts(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        assert isinstance(chunks, list)
+        assert all(isinstance(c, dict) for c in chunks)
+
+    def test_chunk_has_required_fields(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        required = {
+            "chunk_id", "text", "source_type", "article_id", "article_numero",
+            "sufijo", "nombre", "parte", "titulo", "capitulo", "url_original",
+        }
+        for c in chunks:
+            missing = required - c.keys()
+            assert not missing, f"Chunk {c.get('chunk_id')} le faltan campos: {missing}"
+
+    def test_source_type_is_codigo_sustantivo_trabajo(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        for c in chunks:
+            assert c["source_type"] == "codigo_sustantivo_trabajo"
+
+    def test_short_article_single_chunk(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        art64_chunks = [c for c in chunks if c["article_id"] == "cst_art_64"]
+        assert len(art64_chunks) == 1
+
+    def test_long_article_multiple_chunks(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        art61_chunks = [c for c in chunks if c["article_id"] == "cst_art_61"]
+        assert len(art61_chunks) >= 2
+
+    def test_chunk_id_format(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        pattern = re.compile(r"^codigo_sustantivo_trabajo_cst_art_\d+(_[a-z0-9]+)?_\d+$")
+        for c in chunks:
+            assert pattern.match(c["chunk_id"]), f"chunk_id inválido: {c['chunk_id']}"
+
+    def test_hyphenated_suffix_article_uses_full_id_not_bare_numero(
+        self, sample_codigo_sustantivo_trabajo
+    ):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        art391_1 = [c for c in chunks if c["article_id"] == "cst_art_391_1"]
+        assert len(art391_1) == 1
+        assert art391_1[0]["chunk_id"] == "codigo_sustantivo_trabajo_cst_art_391_1_0"
+        assert art391_1[0]["sufijo"] == "1"
+
+    def test_preserves_article_metadata(self, sample_codigo_sustantivo_trabajo):
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        art64 = [c for c in chunks if c["article_id"] == "cst_art_64"]
+        assert len(art64) == 1
+        assert art64[0]["article_numero"] == 64
+        assert "JUSTA CAUSA" in art64[0]["nombre"].upper()
+        assert "PRIMERA PARTE" in art64[0]["parte"].upper()
+        assert art64[0]["titulo"] == "TITULO VIII. TERMINACION DEL CONTRATO DE TRABAJO"
+        assert "SIN JUSTA CAUSA" in art64[0]["capitulo"].upper()
+        assert art64[0]["url_original"] == "https://example.com#64"
+
+    def test_empty_texto_article_is_skipped(self, sample_codigo_sustantivo_trabajo):
+        """cst_art_72 (íntegramente derogado por Ley 1429 de 2010) tiene texto
+        vacío en la fuente — no debe generar chunks, igual que en Código Penal."""
+        chunks = self._chunk(sample_codigo_sustantivo_trabajo)
+        assert not any(c["article_id"] == "cst_art_72" for c in chunks)
+
+
+# ---------------------------------------------------------------------------
 # build_output
 # ---------------------------------------------------------------------------
 
 
 class TestBuildOutput:
-    def _build(self, const_chunks, sent_chunks, cp_chunks):
+    def _build(self, const_chunks, sent_chunks, cp_chunks, cst_chunks=None):
         from data.scripts.chunk_documents import build_output
-        return build_output(const_chunks, sent_chunks, cp_chunks)
+        return build_output(const_chunks, sent_chunks, cp_chunks, cst_chunks or [])
 
     def test_has_metadata_and_chunks(self):
         output = self._build(
@@ -425,21 +561,25 @@ class TestBuildOutput:
         const = [{"chunk_id": f"c{i}", "source_type": "constitucion"} for i in range(3)]
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
         cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
-        output = self._build(const, sent, cp)
-        assert output["metadata"]["total_chunks"] == 12
-        assert len(output["chunks"]) == 12
+        cst = [{"chunk_id": f"t{i}", "source_type": "codigo_sustantivo_trabajo"} for i in range(2)]
+        output = self._build(const, sent, cp, cst)
+        assert output["metadata"]["total_chunks"] == 14
+        assert len(output["chunks"]) == 14
 
     def test_source_counts_correct(self):
         const = [{"chunk_id": f"c{i}", "source_type": "constitucion"} for i in range(3)]
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
         cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
-        output = self._build(const, sent, cp)
+        cst = [{"chunk_id": f"t{i}", "source_type": "codigo_sustantivo_trabajo"} for i in range(2)]
+        output = self._build(const, sent, cp, cst)
         assert output["metadata"]["sources"]["constitucion"] == 3
         assert output["metadata"]["sources"]["sentencias"] == 5
         assert output["metadata"]["sources"]["codigo_penal"] == 4
+        assert output["metadata"]["sources"]["codigo_sustantivo_trabajo"] == 2
 
     def test_codigo_penal_empty_list_counts_zero(self):
         const = [{"chunk_id": "c1", "source_type": "constitucion"}]
         sent = [{"chunk_id": "s1", "source_type": "sentencia"}]
         output = self._build(const, sent, [])
         assert output["metadata"]["sources"]["codigo_penal"] == 0
+        assert output["metadata"]["sources"]["codigo_sustantivo_trabajo"] == 0

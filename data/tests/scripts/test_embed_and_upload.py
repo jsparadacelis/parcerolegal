@@ -163,6 +163,27 @@ class TestBuildPayload:
         assert payload["nombre"] == "Hurto"
         assert "text" in payload
 
+    def test_codigo_sustantivo_trabajo_payload(self):
+        chunk = {
+            "chunk_id": "codigo_sustantivo_trabajo_cst_art_64_0",
+            "text": "En todo contrato de trabajo va envuelta la condición resolutoria.",
+            "source_type": "codigo_sustantivo_trabajo",
+            "article_id": "cst_art_64",
+            "article_numero": 64,
+            "sufijo": None,
+            "nombre": "Terminacion Unilateral Del Contrato De Trabajo Sin Justa Causa",
+            "parte": "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO",
+            "titulo": "TITULO VIII. TERMINACION DEL CONTRATO DE TRABAJO",
+            "capitulo": "CAPITULO VI. TERMINACION UNILATERAL SIN JUSTA CAUSA",
+            "url_original": "https://example.com#64",
+        }
+        payload = self._build(chunk)
+        assert payload["source_type"] == "codigo_sustantivo_trabajo"
+        assert payload["article_id"] == "cst_art_64"
+        assert payload["article_numero"] == 64
+        assert payload["parte"] == "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO"
+        assert "text" in payload
+
 
 # ---------------------------------------------------------------------------
 # filter_chunks_by_source_type
