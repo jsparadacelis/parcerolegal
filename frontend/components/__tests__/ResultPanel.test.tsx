@@ -90,4 +90,11 @@ describe('ResultPanel', () => {
 
     expect(screen.queryByText(/fuentes/i)).not.toBeInTheDocument()
   })
+
+  it('renders the copy and share actions', () => {
+    render(<ResultPanel response={mockResponse} query="¿Qué es el habeas corpus?" />)
+
+    expect(screen.getByRole('button', { name: /copiar texto/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /compartir/i })).toBeInTheDocument()
+  })
 })

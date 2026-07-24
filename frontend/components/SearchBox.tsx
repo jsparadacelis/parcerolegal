@@ -1,14 +1,21 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 
 interface SearchBoxProps {
   onSubmit: (query: string) => void
   isLoading?: boolean
+  initialValue?: string
 }
 
-export function SearchBox({ onSubmit, isLoading = false }: SearchBoxProps) {
-  const [query, setQuery] = useState('')
+export function SearchBox({ onSubmit, isLoading = false, initialValue = '' }: SearchBoxProps) {
+  const [query, setQuery] = useState(initialValue)
+
+  // initialValue puede llegar después del montaje (p. ej. al cargar una
+  // pregunta compartida de forma asíncrona), así que sincronizamos el input.
+  useEffect(() => {
+    setQuery(initialValue)
+  }, [initialValue])
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()

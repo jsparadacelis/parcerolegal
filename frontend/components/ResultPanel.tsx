@@ -1,7 +1,9 @@
 import ReactMarkdown from 'react-markdown'
+import { Copy } from 'lucide-react'
 import type { QueryResponse } from '@/lib/types'
 import { SourceCard } from './SourceCard'
 import { Disclaimer } from './Disclaimer'
+import { ShareButton } from './ShareButton'
 
 interface ResultPanelProps {
   response: QueryResponse
@@ -107,6 +109,18 @@ export function ResultPanel({ response, query }: ResultPanelProps) {
 
           {/* Disclaimer integrado */}
           <Disclaimer />
+
+          {/* Barra de acciones */}
+          <div className="mt-4 pt-3.5 border-t border-surface-3 flex items-center gap-1">
+            <button
+              onClick={() => navigator.clipboard.writeText(response.answer)}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-ink-3 hover:bg-surface-2 transition-colors"
+            >
+              <Copy className="w-[15px] h-[15px]" />
+              Copiar texto
+            </button>
+            <ShareButton query={query} />
+          </div>
         </div>
       </div>
     </div>

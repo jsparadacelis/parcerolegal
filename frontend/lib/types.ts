@@ -13,3 +13,10 @@ export interface QueryResponse {
   out_of_scope: boolean
   processing_time_ms: number
 }
+
+export interface SharedQuery {
+  question: string
+  answer: string
+  sources: Source[]
+  out_of_scope: boolean
+}
