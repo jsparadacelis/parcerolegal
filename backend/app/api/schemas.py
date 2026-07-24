@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from backend.app.infrastructure.config import QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH
 
 
-class QueryRequest(BaseModel):
+class _QuestionRequest(BaseModel):
     question: str = Field(..., min_length=QUESTION_MIN_LENGTH, max_length=QUESTION_MAX_LENGTH)
 
     @field_validator("question", mode="before")
@@ -16,6 +16,14 @@ class QueryRequest(BaseModel):
         if isinstance(v, str):
             return v.strip()
         return v
+
+
+class QueryRequest(_QuestionRequest):
+    pass
+
+
+class ShareRequest(_QuestionRequest):
+    pass
 
 
 class SourceResponse(BaseModel):
@@ -30,6 +38,17 @@ class QueryResponse(BaseModel):
     sources: list[SourceResponse]
     out_of_scope: bool = False
     processing_time_ms: float
+
+
+class ShareResponse(BaseModel):
+    id: str
+
+
+class SharedAnswerResponse(BaseModel):
+    question: str
+    answer: str
+    sources: list[SourceResponse]
+    out_of_scope: bool
 
 
 class HealthResponse(BaseModel):

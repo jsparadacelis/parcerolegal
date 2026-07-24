@@ -9,6 +9,7 @@ from backend.app.domain.entities import (
     SOURCE_TYPE_SENTENCIA,
     QueryResult,
     RetrievedChunk,
+    SharedAnswer,
     Source,
 )
 
@@ -71,6 +72,28 @@ class TestSource:
 
         assert source.source_type == "sentencia"
         assert source.title == "T-760-2008"
+
+
+class TestSharedAnswer:
+    def test_construction(self):
+        source = Source(
+            chunk_id="c1",
+            source_type="constitucion",
+            title="Articulo 30",
+            url="https://example.com",
+        )
+
+        shared = SharedAnswer(
+            id="kJ3f9xQb2p1",
+            question="¿Qué es el habeas corpus?",
+            answer="El habeas corpus es un derecho fundamental.",
+            sources=[source],
+            out_of_scope=False,
+        )
+
+        assert shared.id == "kJ3f9xQb2p1"
+        assert shared.sources == [source]
+        assert shared.out_of_scope is False
 
 
 class TestQueryResult:

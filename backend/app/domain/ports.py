@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.app.domain.entities import MissedQuery, RetrievedChunk
+from backend.app.domain.entities import MissedQuery, RetrievedChunk, SharedAnswer
 
 
 class Embedder(Protocol):
@@ -33,3 +33,17 @@ class MissedQueryStore(Protocol):
     """
 
     def save(self, missed: MissedQuery) -> None: ...
+
+
+class SharedAnswerStore(Protocol):
+    """Persistencia de respuestas publicadas bajo un link compartible.
+
+    A diferencia de MissedQueryStore, NO es fire-and-forget: `save` y `get`
+    deben propagar sus errores. Un link compartible roto (por un fallo
+    tragado en silencio) es peor que un error visible al usuario que intenta
+    compartir o abrir el link.
+    """
+
+    def save(self, shared: SharedAnswer) -> None: ...
+
+    def get(self, share_id: str) -> SharedAnswer | None: ...
