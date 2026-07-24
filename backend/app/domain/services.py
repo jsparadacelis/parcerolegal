@@ -27,15 +27,17 @@ _TRAILING_DANGLING_COMMA_PATTERN = re.compile(r"[ \t]*,[ \t]*$", re.MULTILINE)
 _TRAILING_WHITESPACE_PATTERN = re.compile(r"[ \t]+$", re.MULTILINE)
 
 # Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte
-# + Código Penal Libro II). Orden importa: la primera coincidencia gana. Solo se
-# usa para dar contexto en el mensaje de fuera-de-alcance, nunca decide si se
-# responde o no.
+# + Código Penal Libro II + Código Sustantivo del Trabajo). Orden importa: la
+# primera coincidencia gana. Solo se usa para dar contexto en el mensaje de
+# fuera-de-alcance, nunca decide si se responde o no.
 #
-# "derecho penal" se retiró de aquí el 2026-07-15: el Código Penal (Libro II,
-# Parte Especial) entró al corpus, así que preguntas sobre delitos ya no son
-# fuera de alcance — deben resolverse por retrieval normal. El Libro I (Parte
-# General: dolo/culpa, tentativa, agravantes genéricos) NO se ingirió y sigue
-# fuera de alcance, pero sin categoría propia — cae en el mensaje genérico.
+# "derecho penal" se retiró de aquí el 2026-07-15 (Código Penal Libro II al
+# corpus). "derecho laboral" se retiró el 2026-07-23 (Código Sustantivo del
+# Trabajo completo al corpus, ver .aiplans/ingest-codigo-sustantivo-trabajo/):
+# preguntas de despido/terminación del contrato ya no son fuera de alcance —
+# deben resolverse por retrieval normal contra el CST real, no solo contra
+# sentencias puntuales (ver .aiplans/narrow-single-document-caveat/, el caso
+# que motivó ingerir el CST).
 _LEGAL_AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "derecho de familia y sucesiones (regulado por el Código Civil)",
@@ -43,14 +45,6 @@ _LEGAL_AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "divorcio", "sociedad conyugal", "bienes conyugales", "gananciales",
             "herencia", "sucesión", "sucesion", "matrimonio", "custodia",
             "patria potestad", "cuota alimentaria",
-        ),
-    ),
-    (
-        "derecho laboral (regulado por el Código Sustantivo del Trabajo)",
-        (
-            "despedir", "despido", "sin justa causa", "contrato de trabajo",
-            "liquidación laboral", "cesantías", "cesantias", "prestaciones sociales",
-            "acoso laboral", "indemnización laboral",
         ),
     ),
     (

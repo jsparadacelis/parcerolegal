@@ -106,6 +106,57 @@ def a_codigo_penal_chunk_without_nombre() -> RetrievedChunk:
     )
 
 
+def a_cst_chunk() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c10",
+        text="En todo contrato de trabajo va envuelta la condición resolutoria por incumplimiento.",
+        score=0.80,
+        source_type="codigo_sustantivo_trabajo",
+        metadata={
+            "article_numero": 64,
+            "sufijo": None,
+            "nombre": "Terminacion Unilateral Del Contrato De Trabajo Sin Justa Causa",
+            "parte": "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO",
+            "url_original": "http://example.com/cst#64",
+        },
+    )
+
+
+def a_cst_chunk_with_sufijo() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c11",
+        text="Todo sindicato podrá prever en sus estatutos la creación de Subdirectivas Seccionales.",
+        score=0.76,
+        source_type="codigo_sustantivo_trabajo",
+        metadata={
+            "article_numero": 391,
+            "sufijo": "1",
+            "nombre": "Directivas Seccionales",
+            "parte": "SEGUNDA PARTE. DERECHO COLECTIVO DEL TRABAJO",
+            "url_original": "http://example.com/cst#391-1",
+        },
+    )
+
+
+def a_cst_chunk_without_nombre() -> RetrievedChunk:
+    """Igual que a_codigo_penal_chunk_without_nombre: algunos artículos del CST
+    quedan con 'nombre' vacío en el scraper (ver
+    .aiplans/ingest-codigo-sustantivo-trabajo) — el título debe degradar con
+    gracia."""
+    return RetrievedChunk(
+        chunk_id="c12",
+        text="Artículo derogado por el parágrafo 3 del artículo 65 de la Ley 1429 de 2010.",
+        score=0.70,
+        source_type="codigo_sustantivo_trabajo",
+        metadata={
+            "article_numero": 72,
+            "sufijo": None,
+            "nombre": "",
+            "url_original": "http://example.com/cst#72",
+        },
+    )
+
+
 def a_sentencia_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c3",
@@ -254,6 +305,36 @@ class TestSourceMapping:
 
         title = result.sources[0].title
         assert title == "Art. 447A CP"
+        assert "None" not in title
+        assert not title.endswith("—")
+
+    def test_sources_built_from_cst_chunk(self, use_case, store, llm):
+        store.search.return_value = [a_cst_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿me pueden despedir sin justa causa?")
+
+        source = result.sources[0]
+        assert source.source_type == "codigo_sustantivo_trabajo"
+        assert source.title == "Art. 64 CST — Terminacion Unilateral Del Contrato De Trabajo Sin Justa Causa"
+        assert source.url == "http://example.com/cst#64"
+
+    def test_cst_source_title_includes_sufijo(self, use_case, store, llm):
+        store.search.return_value = [a_cst_chunk_with_sufijo()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué son las directivas seccionales de un sindicato?")
+
+        assert result.sources[0].title == "Art. 391-1 CST — Directivas Seccionales"
+
+    def test_cst_source_title_degrades_without_nombre(self, use_case, store, llm):
+        store.search.return_value = [a_cst_chunk_without_nombre()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué dice el artículo 72 del CST?")
+
+        title = result.sources[0].title
+        assert title == "Art. 72 CST"
         assert "None" not in title
         assert not title.endswith("—")
 
@@ -450,26 +531,31 @@ class TestCitationSanitization:
 class TestNarrowSourceCaveat:
     """Caso reportado 2026-07-22: 'Me pueden despedir sin justa causa' devolvía la
     doctrina de fuero de maternidad (SU-070-13) como si fuera la regla general de
-    despido, sin aclarar que el corpus no cubre derecho laboral general y que la
-    respuesta vino de un único caso puntual. Ver .aiplans/narrow-single-document-caveat.
+    despido, sin aclarar que el corpus no cubría derecho laboral general y que la
+    respuesta venía de un único caso puntual. Ver .aiplans/narrow-single-document-caveat.
+
+    Ese hueco de laboral se cerró el 2026-07-23 ingiriendo el Código Sustantivo del
+    Trabajo completo (ver .aiplans/ingest-codigo-sustantivo-trabajo/) — "derecho
+    laboral" ya no está en `_LEGAL_AREAS`. Estos tests verifican el mecanismo en sí
+    (sigue protegiendo civil/familia y comercial, que siguen fuera de alcance).
     """
 
-    _LABOR_QUESTION = "¿Me pueden despedir sin justa causa?"
+    _EXCLUDED_AREA_QUESTION = "¿puedo quedarme con los bienes tras el divorcio?"
 
     def test_adds_caveat_when_single_document_matches_excluded_area(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
         llm.generate.return_value = "respuesta"
 
-        result = use_case.execute(self._LABOR_QUESTION)
+        result = use_case.execute(self._EXCLUDED_AREA_QUESTION)
 
         assert "T-760-2008" in result.answer
-        assert "laboral" in result.answer.lower()
+        assert "civil" in result.answer.lower()
 
     def test_no_caveat_when_sources_are_diverse(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk(), a_relevant_constitucion_chunk()]
         llm.generate.return_value = "respuesta"
 
-        result = use_case.execute(self._LABOR_QUESTION)
+        result = use_case.execute(self._EXCLUDED_AREA_QUESTION)
 
         assert result.answer == "respuesta"
 
@@ -477,7 +563,7 @@ class TestNarrowSourceCaveat:
         store.search.return_value = [a_sentencia_chunk()]
         llm.generate.return_value = "respuesta"
 
-        result = use_case.execute(self._LABOR_QUESTION)
+        result = use_case.execute(self._EXCLUDED_AREA_QUESTION)
 
         assert result.answer == "respuesta"
 
@@ -494,6 +580,18 @@ class TestNarrowSourceCaveat:
         llm.generate.return_value = "respuesta"
 
         result = use_case.execute(_SENTENCIA_QUESTION)
+
+        assert result.answer == "respuesta"
+
+    def test_labor_question_no_longer_triggers_caveat(self, use_case, store, llm):
+        """El caso original (2026-07-22) ya no aplica: 'derecho laboral' salió de
+        _LEGAL_AREAS al ingerir el CST, así que ni siquiera con fuentes que
+        colapsan en un solo documento se agrega la nota — la pregunta ahora debe
+        resolverse por retrieval normal contra el CST real, no por este mecanismo."""
+        store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Me pueden despedir sin justa causa?")
 
         assert result.answer == "respuesta"
 

@@ -4,6 +4,7 @@ import pytest
 
 from backend.app.domain.entities import (
     SOURCE_TYPE_CODIGO_PENAL,
+    SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
     SOURCE_TYPE_SENTENCIA,
     QueryResult,
@@ -16,9 +17,17 @@ class TestSourceTypeConstants:
     def test_codigo_penal_value(self):
         assert SOURCE_TYPE_CODIGO_PENAL == "codigo_penal"
 
+    def test_codigo_sustantivo_trabajo_value(self):
+        assert SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO == "codigo_sustantivo_trabajo"
+
     def test_all_source_types_are_distinct(self):
-        values = {SOURCE_TYPE_CONSTITUCION, SOURCE_TYPE_SENTENCIA, SOURCE_TYPE_CODIGO_PENAL}
-        assert len(values) == 3
+        values = {
+            SOURCE_TYPE_CONSTITUCION,
+            SOURCE_TYPE_SENTENCIA,
+            SOURCE_TYPE_CODIGO_PENAL,
+            SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
+        }
+        assert len(values) == 4
 
 
 class TestRetrievedChunk:
