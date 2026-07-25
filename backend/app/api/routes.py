@@ -6,7 +6,11 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import get_share_use_case, get_shared_answer_store, get_use_case
+from backend.app.api.dependencies import (
+    get_share_use_case,
+    get_shared_answer_finder,
+    get_use_case,
+)
 from backend.app.api.schemas import (
     QueryRequest,
     QueryResponse,
@@ -17,7 +21,7 @@ from backend.app.api.schemas import (
 )
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.application.share_answer_use_case import ShareAnswerUseCase
-from backend.app.domain.ports import SharedAnswerStore
+from backend.app.domain.ports import SharedAnswerFinder
 
 logger = logging.getLogger("parcerolegal")
 
@@ -65,9 +69,9 @@ def create_share(
 @router.get("/api/shares/{share_id}", response_model=SharedAnswerResponse)
 def get_share(
     share_id: str,
-    store: SharedAnswerStore = Depends(get_shared_answer_store),
+    finder: SharedAnswerFinder = Depends(get_shared_answer_finder),
 ) -> SharedAnswerResponse:
-    shared = store.get(share_id)
+    shared = finder.get(share_id)
     if shared is None:
         raise HTTPException(status_code=404, detail="Enlace no encontrado.")
     return SharedAnswerResponse(
