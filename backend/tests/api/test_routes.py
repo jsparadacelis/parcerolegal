@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from backend.app.api.dependencies import (
     get_settings,
     get_share_use_case,
+    get_shared_answer_finder,
     get_shared_answer_store,
     get_use_case,
 )
@@ -21,7 +22,13 @@ from backend.app.api.main import app
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.application.share_answer_use_case import ShareAnswerUseCase
 from backend.app.domain.entities import RetrievedChunk, SharedAnswer, Source
-from backend.app.domain.ports import Embedder, LLMClient, SharedAnswerStore, VectorStore
+from backend.app.domain.ports import (
+    Embedder,
+    LLMClient,
+    SharedAnswerFinder,
+    SharedAnswerStore,
+    VectorStore,
+)
 from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
 from backend.app.infrastructure.supabase_missed_query_store import (
     SupabaseMissedQueryStore,
@@ -111,6 +118,11 @@ def shared_answer_store() -> SharedAnswerStore:
 
 
 @pytest.fixture
+def shared_answer_finder() -> SharedAnswerFinder:
+    return create_autospec(SharedAnswerFinder, spec_set=True, instance=True)
+
+
+@pytest.fixture
 def share_use_case(use_case, shared_answer_store) -> ShareAnswerUseCase:
     return ShareAnswerUseCase(query_use_case=use_case, store=shared_answer_store)
 
@@ -132,11 +144,13 @@ def client(
     use_case: QueryUseCase,
     share_use_case: ShareAnswerUseCase,
     shared_answer_store: SharedAnswerStore,
+    shared_answer_finder: SharedAnswerFinder,
 ) -> TestClient:
     app.dependency_overrides[get_settings] = lambda: test_settings
     app.dependency_overrides[get_use_case] = lambda: use_case
     app.dependency_overrides[get_share_use_case] = lambda: share_use_case
     app.dependency_overrides[get_shared_answer_store] = lambda: shared_answer_store
+    app.dependency_overrides[get_shared_answer_finder] = lambda: shared_answer_finder
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -153,6 +167,7 @@ def unconfigured_share_client(test_settings: Settings, use_case: QueryUseCase) -
     app.dependency_overrides[get_use_case] = lambda: use_case
     app.dependency_overrides[get_share_use_case] = _raise_unconfigured
     app.dependency_overrides[get_shared_answer_store] = _raise_unconfigured
+    app.dependency_overrides[get_shared_answer_finder] = _raise_unconfigured
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -343,8 +358,8 @@ class TestCreateShareEndpoint:
 
 
 class TestGetShareEndpoint:
-    def test_returns_200_with_stored_content(self, client: TestClient, shared_answer_store):
-        shared_answer_store.get.return_value = SharedAnswer(
+    def test_returns_200_with_stored_content(self, client: TestClient, shared_answer_finder):
+        shared_answer_finder.get.return_value = SharedAnswer(
             id="abc123",
             question=_QUESTION,
             answer=_ANSWER,
@@ -361,8 +376,8 @@ class TestGetShareEndpoint:
         assert data["sources"][0]["chunk_id"] == "c1"
         assert data["out_of_scope"] is False
 
-    def test_returns_404_when_share_not_found(self, client: TestClient, shared_answer_store):
-        shared_answer_store.get.return_value = None
+    def test_returns_404_when_share_not_found(self, client: TestClient, shared_answer_finder):
+        shared_answer_finder.get.return_value = None
 
         response = client.get("/api/shares/no-existe")
 

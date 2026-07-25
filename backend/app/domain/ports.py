@@ -36,14 +36,23 @@ class MissedQueryStore(Protocol):
 
 
 class SharedAnswerStore(Protocol):
-    """Persistencia de respuestas publicadas bajo un link compartible.
+    """Persiste una respuesta publicada bajo un link compartible.
 
-    A diferencia de MissedQueryStore, NO es fire-and-forget: `save` y `get`
-    deben propagar sus errores. Un link compartible roto (por un fallo
-    tragado en silencio) es peor que un error visible al usuario que intenta
-    compartir o abrir el link.
+    A diferencia de MissedQueryStore, NO es fire-and-forget: `save` debe
+    propagar sus errores. Un link compartible roto (por un fallo tragado en
+    silencio) es peor que un error visible al usuario que intenta compartir.
     """
 
     def save(self, shared: SharedAnswer) -> None: ...
+
+
+class SharedAnswerFinder(Protocol):
+    """Busca una respuesta publicada por su share_id.
+
+    Separado de SharedAnswerStore (ver ese docstring): quien solo necesita
+    leer un share (GET /api/shares/{id}) no debería depender de un método
+    `save` que nunca usa, ni viceversa. Igual que `save`, `get` propaga sus
+    errores en vez de tragarlos.
+    """
 
     def get(self, share_id: str) -> SharedAnswer | None: ...

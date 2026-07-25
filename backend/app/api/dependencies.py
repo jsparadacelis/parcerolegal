@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.application.share_answer_use_case import ShareAnswerUseCase
-from backend.app.domain.ports import MissedQueryStore, SharedAnswerStore
+from backend.app.domain.ports import MissedQueryStore, SharedAnswerFinder, SharedAnswerStore
 from backend.app.infrastructure.background_missed_query_store import (
     BackgroundMissedQueryStore,
 )
@@ -71,8 +71,13 @@ def get_use_case() -> QueryUseCase:
     )
 
 
-def _build_shared_answer_store(settings: Settings) -> SharedAnswerStore | None:
-    """None si Supabase no está configurado (dev/local sin credenciales)."""
+def _build_shared_answer_store(settings: Settings) -> SupabaseSharedAnswerStore | None:
+    """None si Supabase no está configurado (dev/local sin credenciales).
+
+    Un único adapter concreto respalda tanto SharedAnswerStore (save) como
+    SharedAnswerFinder (get) — misma tabla, mismo cliente HTTP. Lo que se
+    separa son los ports que cada consumidor ve, no la implementación.
+    """
     if not (settings.supabase_url and settings.supabase_key):
         return None
     return SupabaseSharedAnswerStore(
@@ -82,11 +87,22 @@ def _build_shared_answer_store(settings: Settings) -> SharedAnswerStore | None:
     )
 
 
+_SHARES_UNAVAILABLE_DETAIL = "Compartir no está disponible en este momento."
+
+
 @lru_cache
 def get_shared_answer_store() -> SharedAnswerStore:
     store = _build_shared_answer_store(get_settings())
     if store is None:
-        raise HTTPException(status_code=503, detail="Compartir no está disponible en este momento.")
+        raise HTTPException(status_code=503, detail=_SHARES_UNAVAILABLE_DETAIL)
+    return store
+
+
+@lru_cache
+def get_shared_answer_finder() -> SharedAnswerFinder:
+    store = _build_shared_answer_store(get_settings())
+    if store is None:
+        raise HTTPException(status_code=503, detail=_SHARES_UNAVAILABLE_DETAIL)
     return store
 
 
