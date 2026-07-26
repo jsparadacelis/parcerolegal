@@ -9,7 +9,7 @@ from backend.app.domain.entities import (
     SOURCE_TYPE_CODIGO_PENAL,
     SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
-    MissedQuery,
+    QueryLog,
     QueryResult,
     RetrievedChunk,
     Source,
@@ -17,7 +17,7 @@ from backend.app.domain.entities import (
 from backend.app.domain.ports import (
     Embedder,
     LLMClient,
-    MissedQueryStore,
+    QueryLogStore,
     VectorStore,
 )
 from backend.app.domain.services import (
@@ -85,13 +85,13 @@ class QueryUseCase:
         store: VectorStore,
         llm: LLMClient,
         top_k: int,
-        missed_query_store: MissedQueryStore | None = None,
+        query_log_store: QueryLogStore | None = None,
     ) -> None:
         self._embedder = embedder
         self._store = store
         self._llm = llm
         self._top_k = top_k
-        self._missed_query_store = missed_query_store
+        self._query_log_store = query_log_store
 
     def execute(self, question: str) -> QueryResult:
         start = time.time()
@@ -105,7 +105,7 @@ class QueryUseCase:
 
         if is_out_of_scope(filtered):
             answer = _build_out_of_scope_answer(question)
-            self._record_query(question, answer, chunks, out_of_scope=True)
+            self._record_query(question, answer, chunks, sources=[], out_of_scope=True)
             return QueryResult(
                 answer=answer,
                 sources=[],
@@ -134,7 +134,7 @@ class QueryUseCase:
             if area and is_single_document_answer(raw_sources):
                 answer = _append_narrow_source_caveat(answer, area, sources[0].title)
 
-        self._record_query(question, answer, chunks, out_of_scope=False)
+        self._record_query(question, answer, chunks, sources=sources, out_of_scope=False)
 
         return QueryResult(
             answer=answer,
@@ -148,23 +148,25 @@ class QueryUseCase:
         question: str,
         answer: str,
         chunks: list[RetrievedChunk],
+        sources: list[Source],
         out_of_scope: bool,
     ) -> None:
         """Persiste la consulta respondida, best-effort.
 
         Fire-and-forget: cualquier fallo se loguea pero jamás rompe la respuesta.
         """
-        if self._missed_query_store is None:
+        if self._query_log_store is None:
             return
-        record = MissedQuery(
+        record = QueryLog(
             question=question,
             answer=answer,
+            sources=sources,
             top_score=chunks[0].score if chunks else None,
             detected_area=detect_legal_area(question),
             out_of_scope=out_of_scope,
         )
         try:
-            self._missed_query_store.save(record)
+            self._query_log_store.save(record)
         except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
             logger.exception("no se pudo guardar la consulta")
 

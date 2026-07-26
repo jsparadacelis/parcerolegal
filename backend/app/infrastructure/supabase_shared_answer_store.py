@@ -1,6 +1,6 @@
 """Supabase adapter para SharedAnswerStore — REST directo (PostgREST).
 
-A diferencia de SupabaseMissedQueryStore, NO es best-effort: save/get
+A diferencia de SupabaseQueryLogStore, NO es best-effort: save/get
 propagan cualquier error de red o HTTP. Un share es contenido público que el
 usuario espera poder abrir; tragar el error en silencio dejaría un link roto
 sin que nadie se entere.

@@ -54,19 +54,21 @@ class SharedAnswer:
 
 
 @dataclass(frozen=True)
-class MissedQuery:
-    """Una consulta respondida por el sistema, persistida best-effort.
+class QueryLog:
+    """Un registro de TODAS las consultas respondidas, persistido best-effort.
 
     Se guardan todas las consultas (no solo las que caen bajo el umbral de
     similitud) para poder analizar tanto vacíos del corpus como respuestas en
     alcance. `out_of_scope` indica si cayó bajo el umbral. `top_score` es la
     mayor similitud recuperada antes de filtrar (None si no hubo chunks): permite
-    distinguir el near-miss del ruido y recalibrar el umbral. La marca de tiempo
-    la asigna el almacenamiento (default server-side).
+    distinguir el near-miss del ruido y recalibrar el umbral. `sources` son las
+    fuentes citadas en la respuesta ([] si out_of_scope). La marca de tiempo la
+    asigna el almacenamiento (default server-side).
     """
 
     question: str
     answer: str
+    sources: list[Source]
     top_score: float | None
     detected_area: str | None
     out_of_scope: bool
