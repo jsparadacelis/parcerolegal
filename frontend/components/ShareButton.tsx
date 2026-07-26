@@ -2,19 +2,19 @@
 
 import { useState } from 'react'
 import { Share2, Check, AlertCircle } from 'lucide-react'
-import { createShare } from '@/lib/api'
 
 interface ShareButtonProps {
-  query?: string
+  /** share_token que ya vino en la respuesta de /api/query — compartir no
+   * hace ninguna llamada de red, solo arma el link y lo copia. */
+  shareToken: string
 }
 
-export function ShareButton({ query }: ShareButtonProps) {
+export function ShareButton({ shareToken }: ShareButtonProps) {
   const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle')
 
   const handleShare = async () => {
     try {
-      const { id } = await createShare(query ?? '')
-      await navigator.clipboard.writeText(`${location.origin}/s/${id}`)
+      await navigator.clipboard.writeText(`${location.origin}/s/${shareToken}`)
       setStatus('copied')
     } catch {
       setStatus('error')

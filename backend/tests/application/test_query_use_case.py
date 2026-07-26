@@ -252,6 +252,32 @@ class TestExecuteReturnsResult:
 
         assert result.processing_time_ms > 0
 
+    def test_result_has_a_share_token(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert isinstance(result.share_token, str)
+        assert len(result.share_token) > 0
+
+    def test_out_of_scope_result_also_has_a_share_token(self, use_case, store):
+        store.search.return_value = []
+
+        result = use_case.execute("pregunta fuera de alcance")
+
+        assert isinstance(result.share_token, str)
+        assert len(result.share_token) > 0
+
+    def test_share_token_is_different_on_each_call(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        first = use_case.execute(_HABEAS_CORPUS_QUESTION)
+        second = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert first.share_token != second.share_token
+
 
 class TestSourceMapping:
     def test_sources_built_from_constitucion_chunk(self, use_case, store, llm):
@@ -672,6 +698,30 @@ class TestQueryPersistence:
 
         saved = query_log_store.save.call_args.args[0]
         assert saved.sources == result.sources
+
+    def test_saved_record_carries_the_same_share_token_returned_to_the_caller(
+        self, use_case, store, llm, query_log_store
+    ):
+        """Propiedad clave para compartir sin volver a llamar al RAG: el token
+        que recibe quien pregunta debe ser el mismo que queda guardado, para
+        que un lookup posterior por ese token encuentre este registro exacto."""
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.share_token == result.share_token
+
+    def test_saved_record_carries_share_token_when_out_of_scope_too(
+        self, use_case, store, query_log_store
+    ):
+        store.search.return_value = []
+
+        result = use_case.execute("pregunta fuera de alcance")
+
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.share_token == result.share_token
 
     def test_saved_record_carries_top_score_of_retrieved_chunks(
         self, use_case, store, query_log_store

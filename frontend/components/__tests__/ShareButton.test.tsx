@@ -1,11 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ShareButton } from '../ShareButton'
-import { createShare } from '@/lib/api'
-
-jest.mock('@/lib/api', () => ({
-  createShare: jest.fn(),
-}))
 
 const writeText = jest.fn()
 
@@ -24,30 +19,28 @@ describe('ShareButton', () => {
   })
 
   it('renders the share label', () => {
-    render(<ShareButton query="¿Qué es el habeas corpus?" />)
+    render(<ShareButton shareToken="abc123" />)
 
     expect(screen.getByRole('button', { name: /compartir/i })).toBeInTheDocument()
   })
 
-  it('creates a share and copies the link on click', async () => {
+  it('copies the link built from the share token, with no network call', async () => {
     const user = userEvent.setup()
     mockClipboard()
-    ;(createShare as jest.Mock).mockResolvedValue({ id: 'abc123' })
 
-    render(<ShareButton query="¿Qué es el habeas corpus?" />)
+    render(<ShareButton shareToken="abc123" />)
     await user.click(screen.getByRole('button', { name: /compartir/i }))
 
-    expect(createShare).toHaveBeenCalledWith('¿Qué es el habeas corpus?')
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${location.origin}/s/abc123`))
+    expect(writeText).toHaveBeenCalledWith(`${location.origin}/s/abc123`)
     expect(await screen.findByText(/link copiado/i)).toBeInTheDocument()
   })
 
-  it('shows an error message when sharing fails', async () => {
+  it('shows an error message when the clipboard write fails', async () => {
     const user = userEvent.setup()
+    writeText.mockRejectedValueOnce(new Error('denied'))
     mockClipboard()
-    ;(createShare as jest.Mock).mockRejectedValue(new Error('boom'))
 
-    render(<ShareButton query="¿Qué es el habeas corpus?" />)
+    render(<ShareButton shareToken="abc123" />)
     await user.click(screen.getByRole('button', { name: /compartir/i }))
 
     expect(await screen.findByText(/no se pudo compartir/i)).toBeInTheDocument()

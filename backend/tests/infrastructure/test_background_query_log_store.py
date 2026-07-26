@@ -27,6 +27,7 @@ def a_query_log() -> QueryLog:
         top_score=0.30,
         detected_area=None,
         out_of_scope=True,
+        share_token="ab12cd34ef",
     )
 
 

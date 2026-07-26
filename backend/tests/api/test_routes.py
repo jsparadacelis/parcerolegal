@@ -13,20 +13,17 @@ from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import (
     get_settings,
-    get_share_use_case,
-    get_shared_answer_finder,
-    get_shared_answer_store,
+    get_shared_query_use_case,
     get_use_case,
 )
 from backend.app.api.main import app
+from backend.app.application.get_shared_query_use_case import GetSharedQueryUseCase
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.application.share_answer_use_case import ShareAnswerUseCase
-from backend.app.domain.entities import RetrievedChunk, SharedAnswer, Source
+from backend.app.domain.entities import QueryLog, RetrievedChunk, Source
 from backend.app.domain.ports import (
     Embedder,
     LLMClient,
-    SharedAnswerFinder,
-    SharedAnswerStore,
+    QueryLogFinder,
     VectorStore,
 )
 from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
@@ -113,18 +110,13 @@ def use_case(embedder, store, llm, query_log_store) -> QueryUseCase:
 
 
 @pytest.fixture
-def shared_answer_store() -> SharedAnswerStore:
-    return create_autospec(SharedAnswerStore, spec_set=True, instance=True)
+def query_log_finder() -> QueryLogFinder:
+    return create_autospec(QueryLogFinder, spec_set=True, instance=True)
 
 
 @pytest.fixture
-def shared_answer_finder() -> SharedAnswerFinder:
-    return create_autospec(SharedAnswerFinder, spec_set=True, instance=True)
-
-
-@pytest.fixture
-def share_use_case(use_case, shared_answer_store) -> ShareAnswerUseCase:
-    return ShareAnswerUseCase(query_use_case=use_case, store=shared_answer_store)
+def shared_query_use_case(query_log_finder) -> GetSharedQueryUseCase:
+    return GetSharedQueryUseCase(finder=query_log_finder)
 
 
 @pytest.fixture
@@ -142,15 +134,11 @@ def test_settings() -> Settings:
 def client(
     test_settings: Settings,
     use_case: QueryUseCase,
-    share_use_case: ShareAnswerUseCase,
-    shared_answer_store: SharedAnswerStore,
-    shared_answer_finder: SharedAnswerFinder,
+    shared_query_use_case: GetSharedQueryUseCase,
 ) -> TestClient:
     app.dependency_overrides[get_settings] = lambda: test_settings
     app.dependency_overrides[get_use_case] = lambda: use_case
-    app.dependency_overrides[get_share_use_case] = lambda: share_use_case
-    app.dependency_overrides[get_shared_answer_store] = lambda: shared_answer_store
-    app.dependency_overrides[get_shared_answer_finder] = lambda: shared_answer_finder
+    app.dependency_overrides[get_shared_query_use_case] = lambda: shared_query_use_case
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -158,16 +146,14 @@ def client(
 
 @pytest.fixture
 def unconfigured_share_client(test_settings: Settings, use_case: QueryUseCase) -> TestClient:
-    """Simula Supabase sin configurar: las dependencias de compartir levantan 503."""
+    """Simula Supabase sin configurar: la dependencia de compartir levanta 503."""
 
     def _raise_unconfigured():
         raise HTTPException(status_code=503, detail="Compartir no está disponible en este momento.")
 
     app.dependency_overrides[get_settings] = lambda: test_settings
     app.dependency_overrides[get_use_case] = lambda: use_case
-    app.dependency_overrides[get_share_use_case] = _raise_unconfigured
-    app.dependency_overrides[get_shared_answer_store] = _raise_unconfigured
-    app.dependency_overrides[get_shared_answer_finder] = _raise_unconfigured
+    app.dependency_overrides[get_shared_query_use_case] = _raise_unconfigured
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -237,6 +223,15 @@ class TestQueryEndpoint:
         data = client.post("/api/query", json={"question": _QUESTION}).json()
 
         assert data["processing_time_ms"] > 0
+
+    def test_response_contains_a_share_token(self, client: TestClient, store, llm):
+        store.search.return_value = [a_relevant_chunk()]
+        llm.generate.return_value = _ANSWER
+
+        data = client.post("/api/query", json={"question": _QUESTION}).json()
+
+        assert isinstance(data["share_token"], str)
+        assert len(data["share_token"]) > 0
 
     def test_out_of_scope_returns_true(self, client: TestClient, store, mock_http):
         store.search.return_value = [a_low_score_chunk()]
@@ -324,48 +319,19 @@ class TestRequestLogging:
         assert any("query" in r.message.lower() for r in caplog.records)
 
 
-class TestCreateShareEndpoint:
-    def test_valid_question_returns_201_with_id(self, client: TestClient, store, llm):
-        store.search.return_value = [a_relevant_chunk()]
-        llm.generate.return_value = _ANSWER
-
-        response = client.post("/api/shares", json={"question": _QUESTION})
-
-        assert response.status_code == 201
-        assert "id" in response.json()
-
-    def test_persists_a_shared_answer_matching_the_regenerated_result(
-        self, client: TestClient, store, llm, shared_answer_store
-    ):
-        store.search.return_value = [a_relevant_chunk()]
-        llm.generate.return_value = _ANSWER
-
-        response = client.post("/api/shares", json={"question": _QUESTION})
-
-        share_id = response.json()["id"]
-        saved = shared_answer_store.save.call_args[0][0]
-        assert saved.id == share_id
-        assert saved.question == _QUESTION
-        assert saved.answer == _ANSWER
-        assert saved.out_of_scope is False
-
-    def test_empty_body_returns_422(self, client: TestClient):
-        assert client.post("/api/shares", json={}).status_code == 422
-
-    def test_returns_503_when_supabase_not_configured(self, unconfigured_share_client: TestClient):
-        response = unconfigured_share_client.post("/api/shares", json={"question": _QUESTION})
-
-        assert response.status_code == 503
-
-
 class TestGetShareEndpoint:
-    def test_returns_200_with_stored_content(self, client: TestClient, shared_answer_finder):
-        shared_answer_finder.get.return_value = SharedAnswer(
-            id="abc123",
+    """Compartir no vuelve a llamar al RAG: GET /api/shares/{share_token} lee
+    directo del log de consultas vía GetSharedQueryUseCase/QueryLogFinder."""
+
+    def test_returns_200_with_stored_content(self, client: TestClient, query_log_finder):
+        query_log_finder.find_by_share_token.return_value = QueryLog(
             question=_QUESTION,
             answer=_ANSWER,
             sources=[a_relevant_chunk_as_source()],
+            top_score=0.85,
+            detected_area=None,
             out_of_scope=False,
+            share_token="abc123",
         )
 
         response = client.get("/api/shares/abc123")
@@ -377,8 +343,15 @@ class TestGetShareEndpoint:
         assert data["sources"][0]["chunk_id"] == "c1"
         assert data["out_of_scope"] is False
 
-    def test_returns_404_when_share_not_found(self, client: TestClient, shared_answer_finder):
-        shared_answer_finder.get.return_value = None
+    def test_looks_up_by_the_token_in_the_url(self, client: TestClient, query_log_finder):
+        query_log_finder.find_by_share_token.return_value = None
+
+        client.get("/api/shares/abc123")
+
+        query_log_finder.find_by_share_token.assert_called_once_with("abc123")
+
+    def test_returns_404_when_share_not_found(self, client: TestClient, query_log_finder):
+        query_log_finder.find_by_share_token.return_value = None
 
         response = client.get("/api/shares/no-existe")
 

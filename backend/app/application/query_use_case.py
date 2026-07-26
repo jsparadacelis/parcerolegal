@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import time
 
 from backend.app.domain.entities import (
@@ -29,6 +30,7 @@ from backend.app.domain.services import (
     is_single_document_answer,
     sanitize_citations,
 )
+from backend.app.infrastructure.config import SHARE_ID_BYTES
 
 logger = logging.getLogger("parcerolegal")
 
@@ -95,6 +97,7 @@ class QueryUseCase:
 
     def execute(self, question: str) -> QueryResult:
         start = time.time()
+        share_token = secrets.token_urlsafe(SHARE_ID_BYTES)
 
         embedding = self._embedder.embed(question)
         sentencia_id = extract_sentencia_id(question)
@@ -105,12 +108,15 @@ class QueryUseCase:
 
         if is_out_of_scope(filtered):
             answer = _build_out_of_scope_answer(question)
-            self._record_query(question, answer, chunks, sources=[], out_of_scope=True)
+            self._record_query(
+                question, answer, chunks, sources=[], out_of_scope=True, share_token=share_token
+            )
             return QueryResult(
                 answer=answer,
                 sources=[],
                 out_of_scope=True,
                 processing_time_ms=elapsed_ms(),
+                share_token=share_token,
             )
 
         context = "\n\n".join(
@@ -134,13 +140,16 @@ class QueryUseCase:
             if area and is_single_document_answer(raw_sources):
                 answer = _append_narrow_source_caveat(answer, area, sources[0].title)
 
-        self._record_query(question, answer, chunks, sources=sources, out_of_scope=False)
+        self._record_query(
+            question, answer, chunks, sources=sources, out_of_scope=False, share_token=share_token
+        )
 
         return QueryResult(
             answer=answer,
             sources=sources,
             out_of_scope=False,
             processing_time_ms=elapsed_ms(),
+            share_token=share_token,
         )
 
     def _record_query(
@@ -150,6 +159,7 @@ class QueryUseCase:
         chunks: list[RetrievedChunk],
         sources: list[Source],
         out_of_scope: bool,
+        share_token: str,
     ) -> None:
         """Persiste la consulta respondida, best-effort.
 
@@ -164,6 +174,7 @@ class QueryUseCase:
             top_score=chunks[0].score if chunks else None,
             detected_area=detect_legal_area(question),
             out_of_scope=out_of_scope,
+            share_token=share_token,
         )
         try:
             self._query_log_store.save(record)

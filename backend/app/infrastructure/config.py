@@ -66,7 +66,6 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_queries_table: str = "queries"
-    supabase_shared_answers_table: str = "shared_answers"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

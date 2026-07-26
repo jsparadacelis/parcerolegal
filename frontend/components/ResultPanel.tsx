@@ -119,7 +119,7 @@ export function ResultPanel({ response, query }: ResultPanelProps) {
               <Copy className="w-[15px] h-[15px]" />
               Copiar texto
             </button>
-            <ShareButton query={query} />
+            <ShareButton shareToken={response.share_token} />
           </div>
         </div>
       </div>

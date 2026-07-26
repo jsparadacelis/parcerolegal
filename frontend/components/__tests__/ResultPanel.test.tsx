@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ResultPanel } from '../ResultPanel'
 import type { QueryResponse } from '@/lib/types'
 
@@ -15,6 +16,7 @@ describe('ResultPanel', () => {
     ],
     out_of_scope: false,
     processing_time_ms: 100,
+    share_token: 'test-token',
   }
 
   it('renders the answer text', () => {
@@ -55,6 +57,7 @@ describe('ResultPanel', () => {
       ],
       out_of_scope: false,
       processing_time_ms: 100,
+      share_token: 'test-token',
     }
 
     render(<ResultPanel response={multiSourceResponse} />)
@@ -69,6 +72,7 @@ describe('ResultPanel', () => {
       sources: [],
       out_of_scope: true,
       processing_time_ms: 50,
+      share_token: 'test-token',
     }
 
     render(<ResultPanel response={outOfScopeResponse} />)
@@ -84,6 +88,7 @@ describe('ResultPanel', () => {
       sources: [],
       out_of_scope: true,
       processing_time_ms: 50,
+      share_token: 'test-token',
     }
 
     render(<ResultPanel response={outOfScopeResponse} />)
@@ -96,5 +101,16 @@ describe('ResultPanel', () => {
 
     expect(screen.getByRole('button', { name: /copiar texto/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /compartir/i })).toBeInTheDocument()
+  })
+
+  it('shares the link built from the response share_token, without calling the API again', async () => {
+    const writeText = jest.fn()
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+    render(<ResultPanel response={mockResponse} query="¿Qué es el habeas corpus?" />)
+    await user.click(screen.getByRole('button', { name: /compartir/i }))
+
+    expect(writeText).toHaveBeenCalledWith(`${location.origin}/s/test-token`)
   })
 })

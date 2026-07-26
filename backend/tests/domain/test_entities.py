@@ -10,7 +10,6 @@ from backend.app.domain.entities import (
     QueryLog,
     QueryResult,
     RetrievedChunk,
-    SharedAnswer,
     Source,
 )
 
@@ -75,28 +74,6 @@ class TestSource:
         assert source.title == "T-760-2008"
 
 
-class TestSharedAnswer:
-    def test_construction(self):
-        source = Source(
-            chunk_id="c1",
-            source_type="constitucion",
-            title="Articulo 30",
-            url="https://example.com",
-        )
-
-        shared = SharedAnswer(
-            id="kJ3f9xQb2p1",
-            question="¿Qué es el habeas corpus?",
-            answer="El habeas corpus es un derecho fundamental.",
-            sources=[source],
-            out_of_scope=False,
-        )
-
-        assert shared.id == "kJ3f9xQb2p1"
-        assert shared.sources == [source]
-        assert shared.out_of_scope is False
-
-
 class TestQueryLog:
     def test_construction(self):
         source = Source(
@@ -113,10 +90,12 @@ class TestQueryLog:
             top_score=0.85,
             detected_area=None,
             out_of_scope=False,
+            share_token="kJ3f9xQb2p1",
         )
 
         assert log.sources == [source]
         assert log.out_of_scope is False
+        assert log.share_token == "kJ3f9xQb2p1"
 
     def test_out_of_scope_has_empty_sources(self):
         log = QueryLog(
@@ -126,6 +105,7 @@ class TestQueryLog:
             top_score=0.30,
             detected_area=None,
             out_of_scope=True,
+            share_token="ab12cd34ef",
         )
 
         assert log.sources == []
@@ -138,10 +118,12 @@ class TestQueryResult:
             sources=[],
             out_of_scope=True,
             processing_time_ms=120.5,
+            share_token="ab12cd34ef",
         )
 
         assert result.out_of_scope is True
         assert result.sources == []
+        assert result.share_token == "ab12cd34ef"
 
     def test_successful_result_with_sources(self):
         source = Source(
@@ -156,7 +138,9 @@ class TestQueryResult:
             sources=[source],
             out_of_scope=False,
             processing_time_ms=350.0,
+            share_token="kJ3f9xQb2p1",
         )
 
         assert len(result.sources) == 1
         assert result.out_of_scope is False
+        assert result.share_token == "kJ3f9xQb2p1"

@@ -12,6 +12,7 @@ export interface QueryResponse {
   sources: Source[]
   out_of_scope: boolean
   processing_time_ms: number
+  share_token: string
 }
 
 export interface SharedQuery {
