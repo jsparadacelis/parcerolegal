@@ -8,16 +8,16 @@ from fastapi import HTTPException
 
 from backend.app.application.query_use_case import QueryUseCase
 from backend.app.application.share_answer_use_case import ShareAnswerUseCase
-from backend.app.domain.ports import MissedQueryStore, SharedAnswerFinder, SharedAnswerStore
-from backend.app.infrastructure.background_missed_query_store import (
-    BackgroundMissedQueryStore,
+from backend.app.domain.ports import QueryLogStore, SharedAnswerFinder, SharedAnswerStore
+from backend.app.infrastructure.background_query_log_store import (
+    BackgroundQueryLogStore,
 )
 from backend.app.infrastructure.config import Settings
 from backend.app.infrastructure.groq_llm import GroqLLMClient
 from backend.app.infrastructure.jina_embedder import JinaEmbedder
 from backend.app.infrastructure.qdrant_store import QdrantVectorStore
-from backend.app.infrastructure.supabase_missed_query_store import (
-    SupabaseMissedQueryStore,
+from backend.app.infrastructure.supabase_query_log_store import (
+    SupabaseQueryLogStore,
 )
 from backend.app.infrastructure.supabase_shared_answer_store import (
     SupabaseSharedAnswerStore,
@@ -29,19 +29,19 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def _build_missed_query_store(settings: Settings) -> MissedQueryStore | None:
-    """Persistencia de preguntas fuera de alcance, o None si Supabase no está configurado.
+def _build_query_log_store(settings: Settings) -> QueryLogStore | None:
+    """Persistencia del log de consultas, o None si Supabase no está configurado.
 
     Sin credenciales (dev/local) la feature queda inerte: el use case no guarda
     nada. Con credenciales, envolvemos el adapter en el wrapper no-bloqueante.
     """
     if not (settings.supabase_url and settings.supabase_key):
         return None
-    return BackgroundMissedQueryStore(
-        SupabaseMissedQueryStore(
+    return BackgroundQueryLogStore(
+        SupabaseQueryLogStore(
             url=settings.supabase_url,
             api_key=settings.supabase_key,
-            table=settings.supabase_missed_queries_table,
+            table=settings.supabase_queries_table,
         )
     )
 
@@ -67,7 +67,7 @@ def get_use_case() -> QueryUseCase:
             max_tokens=settings.llm_max_tokens,
         ),
         top_k=settings.top_k,
-        missed_query_store=_build_missed_query_store(settings),
+        query_log_store=_build_query_log_store(settings),
     )
 
 

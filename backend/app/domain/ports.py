@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.app.domain.entities import MissedQuery, RetrievedChunk, SharedAnswer
+from backend.app.domain.entities import QueryLog, RetrievedChunk, SharedAnswer
 
 
 class Embedder(Protocol):
@@ -24,7 +24,7 @@ class LLMClient(Protocol):
     def generate(self, prompt: str, system: str = "") -> str: ...
 
 
-class MissedQueryStore(Protocol):
+class QueryLogStore(Protocol):
     """Persistencia best-effort de todas las consultas respondidas.
 
     Contrato: `save` es fire-and-forget — no debe bloquear la respuesta al
@@ -32,13 +32,13 @@ class MissedQueryStore(Protocol):
     defensiva, así que un fallo aquí nunca rompe la consulta.
     """
 
-    def save(self, missed: MissedQuery) -> None: ...
+    def save(self, log: QueryLog) -> None: ...
 
 
 class SharedAnswerStore(Protocol):
     """Persiste una respuesta publicada bajo un link compartible.
 
-    A diferencia de MissedQueryStore, NO es fire-and-forget: `save` debe
+    A diferencia de QueryLogStore, NO es fire-and-forget: `save` debe
     propagar sus errores. Un link compartible roto (por un fallo tragado en
     silencio) es peor que un error visible al usuario que intenta compartir.
     """

@@ -7,11 +7,11 @@ from unittest.mock import create_autospec
 import pytest
 
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.domain.entities import MissedQuery, QueryResult, RetrievedChunk
+from backend.app.domain.entities import QueryLog, QueryResult, RetrievedChunk
 from backend.app.domain.ports import (
     Embedder,
     LLMClient,
-    MissedQueryStore,
+    QueryLogStore,
     VectorStore,
 )
 from backend.app.infrastructure.config import DEFAULT_TOP_K
@@ -204,18 +204,18 @@ def llm() -> LLMClient:
 
 
 @pytest.fixture
-def missed_query_store() -> MissedQueryStore:
-    return create_autospec(MissedQueryStore, spec_set=True, instance=True)
+def query_log_store() -> QueryLogStore:
+    return create_autospec(QueryLogStore, spec_set=True, instance=True)
 
 
 @pytest.fixture
-def use_case(embedder, store, llm, missed_query_store) -> QueryUseCase:
+def use_case(embedder, store, llm, query_log_store) -> QueryUseCase:
     return QueryUseCase(
         embedder=embedder,
         store=store,
         llm=llm,
         top_k=DEFAULT_TOP_K,
-        missed_query_store=missed_query_store,
+        query_log_store=query_log_store,
     )
 
 
@@ -623,75 +623,96 @@ class TestSentenciaReference:
 
 
 class TestQueryPersistence:
-    def test_saves_record_when_out_of_scope(self, use_case, store, missed_query_store):
+    def test_saves_record_when_out_of_scope(self, use_case, store, query_log_store):
         store.search.return_value = [an_irrelevant_chunk()]
 
         use_case.execute("¿Cuánto cuesta el arroz?")
 
-        missed_query_store.save.assert_called_once()
-        saved = missed_query_store.save.call_args.args[0]
+        query_log_store.save.assert_called_once()
+        saved = query_log_store.save.call_args.args[0]
         assert saved.out_of_scope is True
 
-    def test_saves_record_when_in_scope(self, use_case, store, llm, missed_query_store):
+    def test_saves_record_when_in_scope(self, use_case, store, llm, query_log_store):
         store.search.return_value = [a_relevant_constitucion_chunk()]
         llm.generate.return_value = "respuesta"
 
         use_case.execute(_HABEAS_CORPUS_QUESTION)
 
-        missed_query_store.save.assert_called_once()
-        saved = missed_query_store.save.call_args.args[0]
+        query_log_store.save.assert_called_once()
+        saved = query_log_store.save.call_args.args[0]
         assert saved.out_of_scope is False
 
-    def test_saved_record_carries_question_and_answer(self, use_case, store, missed_query_store):
+    def test_saved_record_carries_question_and_answer(self, use_case, store, query_log_store):
         store.search.return_value = []
 
         result = use_case.execute("pregunta fuera de alcance")
 
-        saved = missed_query_store.save.call_args.args[0]
-        assert isinstance(saved, MissedQuery)
+        saved = query_log_store.save.call_args.args[0]
+        assert isinstance(saved, QueryLog)
         assert saved.question == "pregunta fuera de alcance"
         assert saved.answer == result.answer
 
-    def test_saved_record_carries_top_score_of_retrieved_chunks(
-        self, use_case, store, missed_query_store
+    def test_saved_record_has_empty_sources_when_out_of_scope(
+        self, use_case, store, query_log_store
     ):
         store.search.return_value = [an_irrelevant_chunk()]
 
         use_case.execute("¿Cuánto cuesta el arroz?")
 
-        saved = missed_query_store.save.call_args.args[0]
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.sources == []
+
+    def test_saved_record_carries_sources_when_in_scope(
+        self, use_case, store, llm, query_log_store
+    ):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.sources == result.sources
+
+    def test_saved_record_carries_top_score_of_retrieved_chunks(
+        self, use_case, store, query_log_store
+    ):
+        store.search.return_value = [an_irrelevant_chunk()]
+
+        use_case.execute("¿Cuánto cuesta el arroz?")
+
+        saved = query_log_store.save.call_args.args[0]
         assert saved.top_score == 0.30
 
     def test_saved_record_top_score_is_none_when_no_chunks(
-        self, use_case, store, missed_query_store
+        self, use_case, store, query_log_store
     ):
         store.search.return_value = []
 
         use_case.execute("pregunta fuera de alcance")
 
-        saved = missed_query_store.save.call_args.args[0]
+        saved = query_log_store.save.call_args.args[0]
         assert saved.top_score is None
 
-    def test_saved_record_carries_detected_area(self, use_case, store, missed_query_store):
+    def test_saved_record_carries_detected_area(self, use_case, store, query_log_store):
         store.search.return_value = []
 
         use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
 
-        saved = missed_query_store.save.call_args.args[0]
+        saved = query_log_store.save.call_args.args[0]
         assert saved.detected_area is not None
         assert "Civil" in saved.detected_area
 
     def test_persistence_failure_does_not_break_response(
-        self, use_case, store, missed_query_store
+        self, use_case, store, query_log_store
     ):
         store.search.return_value = [an_irrelevant_chunk()]
-        missed_query_store.save.side_effect = RuntimeError("supabase caído")
+        query_log_store.save.side_effect = RuntimeError("supabase caído")
 
         result = use_case.execute("¿Cuánto cuesta el arroz?")
 
         assert result.out_of_scope is True
 
-    def test_works_without_a_missed_query_store(self, embedder, store, llm):
+    def test_works_without_a_query_log_store(self, embedder, store, llm):
         store.search.return_value = []
         use_case = QueryUseCase(embedder=embedder, store=store, llm=llm, top_k=DEFAULT_TOP_K)
 
@@ -706,5 +727,5 @@ class TestConstruction:
         assert use_case._store is store
         assert use_case._llm is llm
 
-    def test_construction_stores_missed_query_store(self, use_case, missed_query_store):
-        assert use_case._missed_query_store is missed_query_store
+    def test_construction_stores_query_log_store(self, use_case, query_log_store):
+        assert use_case._query_log_store is query_log_store

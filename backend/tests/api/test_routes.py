@@ -30,14 +30,14 @@ from backend.app.domain.ports import (
     VectorStore,
 )
 from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
-from backend.app.infrastructure.supabase_missed_query_store import (
-    SupabaseMissedQueryStore,
+from backend.app.infrastructure.supabase_query_log_store import (
+    SupabaseQueryLogStore,
 )
 
 _QUESTION = "¿Qué es el habeas corpus?"
 _ANSWER = "El habeas corpus es un derecho fundamental."
 _SUPABASE_URL = "https://proj.supabase.co"
-_SUPABASE_INSERT_URL = f"{_SUPABASE_URL}/rest/v1/missed_queries"
+_SUPABASE_INSERT_URL = f"{_SUPABASE_URL}/rest/v1/queries"
 
 
 def a_relevant_chunk() -> RetrievedChunk:
@@ -89,8 +89,8 @@ def llm() -> LLMClient:
 
 
 @pytest.fixture
-def missed_query_store() -> SupabaseMissedQueryStore:
-    return SupabaseMissedQueryStore(url=_SUPABASE_URL, api_key="test-key")
+def query_log_store() -> SupabaseQueryLogStore:
+    return SupabaseQueryLogStore(url=_SUPABASE_URL, api_key="test-key")
 
 
 @pytest.fixture(autouse=True)
@@ -102,13 +102,13 @@ def mock_http():
 
 
 @pytest.fixture
-def use_case(embedder, store, llm, missed_query_store) -> QueryUseCase:
+def use_case(embedder, store, llm, query_log_store) -> QueryUseCase:
     return QueryUseCase(
         embedder=embedder,
         store=store,
         llm=llm,
         top_k=DEFAULT_TOP_K,
-        missed_query_store=missed_query_store,
+        query_log_store=query_log_store,
     )
 
 
@@ -266,6 +266,7 @@ class TestQueryEndpoint:
         assert mock_http.calls[0].request.url == _SUPABASE_INSERT_URL
         sent = json.loads(mock_http.calls[0].request.body)
         assert sent["out_of_scope"] is False
+        assert sent["sources"] == data["sources"]
 
 
 class TestCORS:

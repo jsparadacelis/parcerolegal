@@ -7,6 +7,7 @@ from backend.app.domain.entities import (
     SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
     SOURCE_TYPE_SENTENCIA,
+    QueryLog,
     QueryResult,
     RetrievedChunk,
     SharedAnswer,
@@ -94,6 +95,40 @@ class TestSharedAnswer:
         assert shared.id == "kJ3f9xQb2p1"
         assert shared.sources == [source]
         assert shared.out_of_scope is False
+
+
+class TestQueryLog:
+    def test_construction(self):
+        source = Source(
+            chunk_id="c1",
+            source_type="constitucion",
+            title="Art. 30",
+            url="https://example.com",
+        )
+
+        log = QueryLog(
+            question="¿Qué es el habeas corpus?",
+            answer="El habeas corpus es un derecho fundamental.",
+            sources=[source],
+            top_score=0.85,
+            detected_area=None,
+            out_of_scope=False,
+        )
+
+        assert log.sources == [source]
+        assert log.out_of_scope is False
+
+    def test_out_of_scope_has_empty_sources(self):
+        log = QueryLog(
+            question="¿Cuánto cuesta el arroz?",
+            answer="fuera de alcance...",
+            sources=[],
+            top_score=0.30,
+            detected_area=None,
+            out_of_scope=True,
+        )
+
+        assert log.sources == []
 
 
 class TestQueryResult:
