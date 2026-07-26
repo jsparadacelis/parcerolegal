@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from backend.app.domain.entities import QueryLog, RetrievedChunk, SharedAnswer
+from backend.app.domain.entities import QueryLog, RetrievedChunk
 
 
 class Embedder(Protocol):
@@ -35,24 +35,14 @@ class QueryLogStore(Protocol):
     def save(self, log: QueryLog) -> None: ...
 
 
-class SharedAnswerStore(Protocol):
-    """Persiste una respuesta publicada bajo un link compartible.
+class QueryLogFinder(Protocol):
+    """Busca un QueryLog ya persistido por su share_token.
 
-    A diferencia de QueryLogStore, NO es fire-and-forget: `save` debe
-    propagar sus errores. Un link compartible roto (por un fallo tragado en
-    silencio) es peor que un error visible al usuario que intenta compartir.
+    Separado de QueryLogStore (ISP: quien solo necesita leer un share
+    -GET /api/shares/{token}- no debería depender de un método `save` que
+    nunca usa, ni viceversa). A diferencia de `save`, `find_by_share_token`
+    NO es fire-and-forget: debe propagar sus errores. Un link compartible que
+    falla en silencio es peor que un error visible a quien intenta abrirlo.
     """
 
-    def save(self, shared: SharedAnswer) -> None: ...
-
-
-class SharedAnswerFinder(Protocol):
-    """Busca una respuesta publicada por su share_id.
-
-    Separado de SharedAnswerStore (ver ese docstring): quien solo necesita
-    leer un share (GET /api/shares/{id}) no debería depender de un método
-    `save` que nunca usa, ni viceversa. Igual que `save`, `get` propaga sus
-    errores en vez de tragarlos.
-    """
-
-    def get(self, share_id: str) -> SharedAnswer | None: ...
+    def find_by_share_token(self, share_token: str) -> QueryLog | None: ...

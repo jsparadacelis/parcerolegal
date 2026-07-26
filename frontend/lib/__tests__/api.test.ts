@@ -1,4 +1,4 @@
-import { queryLegal, createShare, getShare, ApiError } from '../api'
+import { queryLegal, getShare, ApiError } from '../api'
 
 describe('queryLegal', () => {
   beforeEach(() => {
@@ -15,6 +15,7 @@ describe('queryLegal', () => {
       sources: [],
       out_of_scope: false,
       processing_time_ms: 100,
+      share_token: 'abc123',
     }
     ;(global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -56,51 +57,6 @@ describe('queryLegal', () => {
     )
 
     await expect(queryLegal('pregunta')).rejects.toThrow('tardó demasiado')
-  })
-})
-
-describe('createShare', () => {
-  beforeEach(() => {
-    global.fetch = jest.fn()
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  it('returns the id on success', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: 'abc123' }),
-    })
-
-    const result = await createShare('¿Qué es el habeas corpus?')
-
-    expect(result).toEqual({ id: 'abc123' })
-  })
-
-  it('sends the question in the request body', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: 'abc123' }),
-    })
-
-    await createShare('¿Qué es el habeas corpus?')
-
-    const [, options] = (global.fetch as jest.Mock).mock.calls[0]
-    expect(JSON.parse(options.body)).toEqual({ question: '¿Qué es el habeas corpus?' })
-  })
-
-  it('throws ApiError when the response is not ok', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
-
-    await expect(createShare('pregunta')).rejects.toThrow(ApiError)
-  })
-
-  it('throws ApiError when fetch rejects (network failure)', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'))
-
-    await expect(createShare('pregunta')).rejects.toThrow(ApiError)
   })
 })
 

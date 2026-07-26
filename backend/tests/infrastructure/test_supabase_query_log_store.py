@@ -39,6 +39,7 @@ def a_query_log(
     top_score: float | None = 0.38,
     detected_area: str | None = "derecho de familia y sucesiones (regulado por el Código Civil)",
     out_of_scope: bool = True,
+    share_token: str = "kJ3f9xQb2p1",
 ) -> QueryLog:
     return QueryLog(
         question=question,
@@ -47,6 +48,7 @@ def a_query_log(
         top_score=top_score,
         detected_area=detected_area,
         out_of_scope=out_of_scope,
+        share_token=share_token,
     )
 
 
@@ -85,6 +87,7 @@ class TestSupabaseQueryLogStoreSave:
             "top_score": 0.38,
             "detected_area": "derecho penal",
             "out_of_scope": True,
+            "share_token": "kJ3f9xQb2p1",
         }
 
     def test_posts_sources_as_list_of_dicts(self, store, mock_http):
@@ -132,3 +135,87 @@ class TestSupabaseQueryLogStoreSave:
         mock_http.add(responses.POST, _INSERT_URL, body=requests.exceptions.Timeout())
 
         store.save(a_query_log())  # best-effort: no debe propagar
+
+
+class TestSupabaseQueryLogStoreFindByShareToken:
+    """A diferencia de `save`, `find_by_share_token` NO es best-effort: propaga
+    errores. Un link compartible que responde mal debe ser un fallo visible,
+    no una tabla vacía silenciosa (mismo contrato que tenía SharedAnswerFinder)."""
+
+    def test_returns_query_log_when_found(self, store, mock_http):
+        mock_http.add(
+            responses.GET,
+            _INSERT_URL,
+            json=[
+                {
+                    "question": "¿puedo quedarme con los bienes tras el divorcio?",
+                    "answer": "Tu pregunta parece tratar sobre derecho de familia...",
+                    "sources": [],
+                    "top_score": 0.38,
+                    "detected_area": "derecho de familia y sucesiones (regulado por el Código Civil)",
+                    "out_of_scope": True,
+                    "share_token": "kJ3f9xQb2p1",
+                }
+            ],
+            status=200,
+        )
+
+        log = store.find_by_share_token("kJ3f9xQb2p1")
+
+        assert log == a_query_log()
+
+    def test_reconstructs_sources_as_list_of_source(self, store, mock_http):
+        mock_http.add(
+            responses.GET,
+            _INSERT_URL,
+            json=[
+                {
+                    "question": "¿Qué es el habeas corpus?",
+                    "answer": "El habeas corpus es un derecho fundamental.",
+                    "sources": [
+                        {
+                            "chunk_id": "c1",
+                            "source_type": "constitucion",
+                            "title": "Art. 30",
+                            "url": "https://example.com/art30",
+                        }
+                    ],
+                    "top_score": 0.85,
+                    "detected_area": None,
+                    "out_of_scope": False,
+                    "share_token": "kJ3f9xQb2p1",
+                }
+            ],
+            status=200,
+        )
+
+        log = store.find_by_share_token("kJ3f9xQb2p1")
+
+        assert log.sources == [a_source()]
+
+    def test_sends_share_token_filter_and_auth_headers(self, store, mock_http):
+        mock_http.add(responses.GET, _INSERT_URL, json=[], status=200)
+
+        store.find_by_share_token("kJ3f9xQb2p1")
+
+        request = mock_http.calls[0].request
+        assert "share_token=eq.kJ3f9xQb2p1" in request.url
+        assert request.headers["apikey"] == _API_KEY
+        assert request.headers["Authorization"] == f"Bearer {_API_KEY}"
+
+    def test_returns_none_when_not_found(self, store, mock_http):
+        mock_http.add(responses.GET, _INSERT_URL, json=[], status=200)
+
+        assert store.find_by_share_token("no-existe") is None
+
+    def test_raises_on_http_error(self, store, mock_http):
+        mock_http.add(responses.GET, _INSERT_URL, json={"message": "boom"}, status=500)
+
+        with pytest.raises(requests.exceptions.HTTPError):
+            store.find_by_share_token("kJ3f9xQb2p1")
+
+    def test_raises_on_timeout(self, store, mock_http):
+        mock_http.add(responses.GET, _INSERT_URL, body=requests.exceptions.Timeout())
+
+        with pytest.raises(requests.exceptions.Timeout):
+            store.find_by_share_token("kJ3f9xQb2p1")

@@ -6,22 +6,15 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import (
-    get_share_use_case,
-    get_shared_answer_finder,
-    get_use_case,
-)
+from backend.app.api.dependencies import get_shared_query_use_case, get_use_case
 from backend.app.api.schemas import (
     QueryRequest,
     QueryResponse,
-    ShareRequest,
-    SharedAnswerResponse,
-    ShareResponse,
+    SharedQueryResponse,
     SourceResponse,
 )
+from backend.app.application.get_shared_query_use_case import GetSharedQueryUseCase
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.application.share_answer_use_case import ShareAnswerUseCase
-from backend.app.domain.ports import SharedAnswerFinder
 
 logger = logging.getLogger("parcerolegal")
 
@@ -53,28 +46,21 @@ def query(
         ],
         out_of_scope=result.out_of_scope,
         processing_time_ms=result.processing_time_ms,
+        share_token=result.share_token,
     )
 
 
-@router.post("/api/shares", response_model=ShareResponse, status_code=201)
-def create_share(
-    request: ShareRequest,
-    use_case: ShareAnswerUseCase = Depends(get_share_use_case),
-) -> ShareResponse:
-    share_id = use_case.execute(request.question)
-    logger.info("share created id=%s question_len=%d", share_id, len(request.question))
-    return ShareResponse(id=share_id)
-
-
-@router.get("/api/shares/{share_id}", response_model=SharedAnswerResponse)
-def get_share(
-    share_id: str,
-    finder: SharedAnswerFinder = Depends(get_shared_answer_finder),
-) -> SharedAnswerResponse:
-    shared = finder.get(share_id)
+@router.get("/api/shares/{share_token}", response_model=SharedQueryResponse)
+def get_shared_query(
+    share_token: str,
+    use_case: GetSharedQueryUseCase = Depends(get_shared_query_use_case),
+) -> SharedQueryResponse:
+    """No vuelve a llamar al RAG: lee directo del log de consultas que
+    QueryUseCase ya generó y persistió cuando se respondió la pregunta."""
+    shared = use_case.execute(share_token)
     if shared is None:
         raise HTTPException(status_code=404, detail="Enlace no encontrado.")
-    return SharedAnswerResponse(
+    return SharedQueryResponse(
         question=shared.question,
         answer=shared.answer,
         sources=[

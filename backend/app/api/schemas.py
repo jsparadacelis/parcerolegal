@@ -22,10 +22,6 @@ class QueryRequest(_QuestionRequest):
     pass
 
 
-class ShareRequest(_QuestionRequest):
-    pass
-
-
 class SourceResponse(BaseModel):
     chunk_id: str
     source_type: str
@@ -38,13 +34,10 @@ class QueryResponse(BaseModel):
     sources: list[SourceResponse]
     out_of_scope: bool = False
     processing_time_ms: float
+    share_token: str
 
 
-class ShareResponse(BaseModel):
-    id: str
-
-
-class SharedAnswerResponse(BaseModel):
+class SharedQueryResponse(BaseModel):
     question: str
     answer: str
     sources: list[SourceResponse]

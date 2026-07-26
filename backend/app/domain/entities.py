@@ -30,27 +30,15 @@ class Source:
 
 @dataclass(frozen=True)
 class QueryResult:
+    """`share_token` identifica este registro para compartirlo sin volver a
+    llamar al RAG: lo genera QueryUseCase.execute() y es el mismo valor que
+    queda guardado en el QueryLog correspondiente (ver ese docstring)."""
+
     answer: str
     sources: list[Source]
     out_of_scope: bool
     processing_time_ms: float
-
-
-@dataclass(frozen=True)
-class SharedAnswer:
-    """Una respuesta publicada bajo un link compartible (GET /api/shares/{id}).
-
-    `id` lo genera el backend (token corto url-safe, ver
-    `application.share_answer_use_case`), nunca el cliente: así el contenido
-    servido en el link siempre proviene de una ejecución real del pipeline
-    RAG, nunca de texto arbitrario enviado por quien comparte.
-    """
-
-    id: str
-    question: str
-    answer: str
-    sources: list[Source]
-    out_of_scope: bool
+    share_token: str
 
 
 @dataclass(frozen=True)
@@ -62,8 +50,13 @@ class QueryLog:
     alcance. `out_of_scope` indica si cayó bajo el umbral. `top_score` es la
     mayor similitud recuperada antes de filtrar (None si no hubo chunks): permite
     distinguir el near-miss del ruido y recalibrar el umbral. `sources` son las
-    fuentes citadas en la respuesta ([] si out_of_scope). La marca de tiempo la
-    asigna el almacenamiento (default server-side).
+    fuentes citadas en la respuesta ([] si out_of_scope).
+
+    `share_token` es lo que hace posible compartir sin volver a llamar al RAG:
+    se genera en QueryUseCase.execute() (no en este registro) y es el mismo
+    valor que se devuelve al cliente en QueryResult — un lookup posterior por
+    ese token (GetSharedQueryUseCase/QueryLogFinder) encuentra este registro
+    exacto, ya persistido, sin recalcular nada.
     """
 
     question: str
@@ -72,3 +65,4 @@ class QueryLog:
     top_score: float | None
     detected_area: str | None
     out_of_scope: bool
+    share_token: str
