@@ -41,14 +41,14 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">¿De dónde vienen las respuestas?</h2>
           <p className="mb-3 text-sm leading-relaxed text-ink-2">
-            Las respuestas se construyen a partir de dos fuentes oficiales:
+            Las respuestas se construyen a partir de cuatro fuentes oficiales:
           </p>
           <ul className="mb-3 space-y-2 text-sm text-ink-2">
             <li className="flex items-start gap-2">
               <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
               <span>
                 <strong className="text-ink font-semibold">Constitución Política de Colombia (1991)</strong>
-                {' '}— los 380 artículos completos.
+                {' '}— los 383 artículos completos.
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -61,9 +61,26 @@ export default function AboutPage() {
                 derechos fundamentales colombianos.
               </span>
             </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
+              <span>
+                <strong className="text-ink font-semibold">Código Penal (Ley 599 de 2000)</strong>
+                {' '}— los 480 artículos del Libro II, la parte que define cada delito y la
+                pena que le corresponde: hurto, homicidio, estafa, violencia intrafamiliar
+                y demás.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
+              <span>
+                <strong className="text-ink font-semibold">Código Sustantivo del Trabajo (Decreto 2663 de 1950)</strong>
+                {' '}— los 491 artículos completos: contrato de trabajo, jornada, salario,
+                prestaciones, terminación y derecho colectivo.
+              </span>
+            </li>
           </ul>
           <p className="text-sm leading-relaxed text-ink-2">
-            Todos los textos provienen directamente de{' '}
+            Las sentencias vienen de{' '}
             <a
               href="https://www.corteconstitucional.gov.co"
               target="_blank"
@@ -71,6 +88,15 @@ export default function AboutPage() {
               className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
             >
               corteconstitucional.gov.co
+            </a>
+            ; la Constitución y los códigos, del{' '}
+            <a
+              href="https://www.funcionpublica.gov.co/eva/gestornormativo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
+            >
+              gestor normativo de la Función Pública
             </a>
             .
           </p>
@@ -104,9 +130,13 @@ export default function AboutPage() {
               contener errores, estar desactualizadas o no aplicar a tu situación específica.
             </p>
             <p className="mb-3 text-[14.5px] leading-relaxed text-ink-2">
-              El corpus cubre principalmente la Constitución del 91 y jurisprudencia
-              constitucional seleccionada. Temas de derecho civil, penal, laboral, comercial
-              o administrativo pueden no estar cubiertos o cubiertos parcialmente.
+              El corpus cubre la Constitución, jurisprudencia constitucional seleccionada,
+              los delitos del Código Penal y el Código Sustantivo del Trabajo. Quedan por
+              fuera —y se responden como «fuera de alcance»— el derecho de familia y
+              sucesiones (divorcio, sociedad conyugal, herencias), el comercial, el
+              administrativo y el tributario. Del Código Penal está la parte que define los
+              delitos, pero todavía no las reglas generales de responsabilidad: dolo y
+              culpa, tentativa, autoría y complicidad.
             </p>
             <p className="text-[14.5px] leading-relaxed text-ink-2">
               Para decisiones legales que te afecten — una tutela, un contrato, un proceso
