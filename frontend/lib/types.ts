@@ -1,4 +1,10 @@
-export type SourceType = 'constitucion' | 'sentencia'
+// Debe reflejar los SOURCE_TYPE_* del backend (backend/app/domain/entities.py).
+// Al agregar un corpus nuevo, añadirlo aquí y en SOURCE_META (SourceCard.tsx).
+export type SourceType =
+  | 'constitucion'
+  | 'sentencia'
+  | 'codigo_penal'
+  | 'codigo_sustantivo_trabajo'
 
 export interface Source {
   chunk_id: string
