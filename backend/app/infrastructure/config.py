@@ -24,6 +24,11 @@ JINA_TIMEOUT_SECONDS = 10
 GROQ_TIMEOUT_SECONDS = 40
 GROQ_MAX_RETRIES = 3
 GROQ_RETRY_BASE_DELAY_SECONDS = 1.0
+# gpt-oss es modelo de razonamiento: el razonamiento consume el mismo
+# max_tokens que la respuesta. "low" deja margen a la respuesta y
+# include_reasoning=False evita recibir el razonamiento en el payload.
+GROQ_REASONING_EFFORT = "low"
+GROQ_INCLUDE_REASONING = False
 
 # --- Retrieval -------------------------------------------------------------
 DEFAULT_TOP_K = 5
@@ -59,7 +64,7 @@ class Settings(BaseSettings):
     top_k: int = DEFAULT_TOP_K
     embedding_model: str = "jina-embeddings-v3"
     embedding_dimensions: int = 1024
-    llm_model: str = "llama-3.3-70b-versatile"
+    llm_model: str = "openai/gpt-oss-120b"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1024
     qdrant_collection: str = "parcerolegal"
