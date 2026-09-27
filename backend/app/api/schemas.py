@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 from backend.app.infrastructure.config import QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH
@@ -47,6 +49,18 @@ class SharedQueryResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     environment: str
+
+
+class DependencyCheckResponse(BaseModel):
+    ok: bool
+    latency_ms: int
+    error: str | None
+    skipped: bool
+
+
+class DeepHealthResponse(BaseModel):
+    status: Literal["ok", "degraded"]
+    checks: dict[str, DependencyCheckResponse]
 
 
 class ErrorResponse(BaseModel):

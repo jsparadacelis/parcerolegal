@@ -6,14 +6,21 @@ from functools import lru_cache
 
 from fastapi import HTTPException
 
+from backend.app.application.deep_health_check_use_case import DeepHealthCheckUseCase
 from backend.app.application.get_shared_query_use_case import GetSharedQueryUseCase
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.domain.ports import QueryLogFinder, QueryLogStore
+from backend.app.domain.ports import DependencyProbe, QueryLogFinder, QueryLogStore
 from backend.app.infrastructure.background_query_log_store import (
     BackgroundQueryLogStore,
 )
-from backend.app.infrastructure.config import Settings
+from backend.app.infrastructure.config import HEALTH_CHECK_CACHE_TTL_SECONDS, Settings
 from backend.app.infrastructure.groq_llm import GroqLLMClient
+from backend.app.infrastructure.health_probes import (
+    GroqProbe,
+    JinaProbe,
+    QdrantProbe,
+    SupabaseProbe,
+)
 from backend.app.infrastructure.jina_embedder import JinaEmbedder
 from backend.app.infrastructure.qdrant_store import QdrantVectorStore
 from backend.app.infrastructure.supabase_query_log_store import (
@@ -54,6 +61,41 @@ def _build_query_log_store(settings: Settings) -> QueryLogStore | None:
     if adapter is None:
         return None
     return BackgroundQueryLogStore(adapter)
+
+
+def _build_health_probes(settings: Settings) -> dict[str, DependencyProbe | None]:
+    """Un probe por dependencia externa; Supabase es opcional (None → skipped)."""
+    supabase_probe = None
+    if settings.supabase_url and settings.supabase_key:
+        supabase_probe = SupabaseProbe(
+            url=settings.supabase_url,
+            api_key=settings.supabase_key,
+            table=settings.supabase_queries_table,
+        )
+    return {
+        "qdrant": QdrantProbe(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key,
+            collection=settings.qdrant_collection,
+        ),
+        "jina": JinaProbe(
+            api_key=settings.jina_api_key,
+            model=settings.embedding_model,
+            dimensions=settings.embedding_dimensions,
+        ),
+        "groq": GroqProbe(api_key=settings.groq_api_key, model=settings.llm_model),
+        "supabase": supabase_probe,
+    }
+
+
+@lru_cache
+def get_deep_health_check_use_case() -> DeepHealthCheckUseCase:
+    # lru_cache: una sola instancia por proceso, así el cache TTL del use case
+    # se comparte entre requests.
+    return DeepHealthCheckUseCase(
+        probes=_build_health_probes(get_settings()),
+        cache_ttl_seconds=HEALTH_CHECK_CACHE_TTL_SECONDS,
+    )
 
 
 @lru_cache

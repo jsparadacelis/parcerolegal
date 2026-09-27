@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
-from backend.app.api.dependencies import get_shared_query_use_case, get_use_case
+from backend.app.api.dependencies import (
+    get_deep_health_check_use_case,
+    get_shared_query_use_case,
+    get_use_case,
+)
 from backend.app.api.schemas import (
+    DeepHealthResponse,
+    DependencyCheckResponse,
     QueryRequest,
     QueryResponse,
     SharedQueryResponse,
     SourceResponse,
 )
+from backend.app.application.deep_health_check_use_case import DeepHealthCheckUseCase
 from backend.app.application.get_shared_query_use_case import GetSharedQueryUseCase
 from backend.app.application.query_use_case import QueryUseCase
+from backend.app.infrastructure.config import HTTP_SERVICE_UNAVAILABLE
 
 logger = logging.getLogger("parcerolegal")
 
@@ -70,4 +78,33 @@ def get_shared_query(
             for s in shared.sources
         ],
         out_of_scope=shared.out_of_scope,
+    )
+
+
+@router.get(
+    "/api/health/deep",
+    response_model=DeepHealthResponse,
+    responses={HTTP_SERVICE_UNAVAILABLE: {"model": DeepHealthResponse}},
+)
+def deep_health_check(
+    response: Response,
+    use_case: DeepHealthCheckUseCase = Depends(get_deep_health_check_use_case),
+) -> DeepHealthResponse:
+    """Verifica Qdrant, Jina, Groq y Supabase de verdad (a diferencia de
+    /api/health, que Railway usa como healthcheck de deploy y debe seguir
+    siendo barato). Pensado para un monitor de uptime externo."""
+    report = use_case.execute()
+    if not report.is_healthy:
+        response.status_code = HTTP_SERVICE_UNAVAILABLE
+    return DeepHealthResponse(
+        status="ok" if report.is_healthy else "degraded",
+        checks={
+            name: DependencyCheckResponse(
+                ok=status.ok,
+                latency_ms=status.latency_ms,
+                error=status.error,
+                skipped=status.skipped,
+            )
+            for name, status in report.checks.items()
+        },
     )
