@@ -27,7 +27,7 @@ _TRAILING_DANGLING_COMMA_PATTERN = re.compile(r"[ \t]*,[ \t]*$", re.MULTILINE)
 _TRAILING_WHITESPACE_PATTERN = re.compile(r"[ \t]+$", re.MULTILINE)
 
 # Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte
-# + Código Penal Libro II + Código Sustantivo del Trabajo + Código Civil). Orden
+# + Código Penal Libros I y II + Código Sustantivo del Trabajo + Código Civil). Orden
 # importa: la primera coincidencia gana. Solo se usa para dar contexto en el
 # mensaje de fuera-de-alcance, nunca decide si se responde o no.
 #

@@ -4,13 +4,13 @@ Buscador legal colombiano gratuito. Haces una pregunta en español natural y rec
 
 Producción: **https://www.parcerolegal.co**
 
-Corpus actual (~15.9k chunks en Qdrant):
+Corpus actual (~16k chunks en Qdrant):
 
 | Fuente | Chunks |
 |---|---|
 | Constitución Política de Colombia (1991) | 691 |
 | 25 sentencias clave de la Corte Constitucional (T-760/08, C-355/06, SU-214/16, T-025/04, …) | 12 072 |
-| Código Penal, Libro II (delitos y penas) | 567 |
+| Código Penal (parte general, delitos y penas) | 738 |
 | Código Sustantivo del Trabajo | 481 |
 | Código Civil completo (2 684 artículos, 2 036 con texto vigente) | 2 085 |
 

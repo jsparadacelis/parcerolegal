@@ -37,7 +37,7 @@ logger = logging.getLogger("parcerolegal")
 
 _SCOPE = (
     "la Constitución Política de Colombia, las sentencias de la Corte "
-    "Constitucional, el Código Penal (delitos y sus penas), el Código "
+    "Constitucional, el Código Penal (parte general, delitos y penas), el Código "
     "Sustantivo del Trabajo (contrato de trabajo, despido y derecho colectivo) y "
     "el Código Civil (personas y familia, bienes, sucesiones, obligaciones y contratos)"
 )

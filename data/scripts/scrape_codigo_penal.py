@@ -19,17 +19,16 @@ OUTPUT_PATH = Path("data/processed/codigo_penal.json")
 # _strong_text, que solo mira el <strong> del encabezado — ver su docstring para
 # el bug real que motivó eso). Sin el grupo de sufijo, "103A"/"243-A"/"269-1" se
 # truncarían a numero=103/243/269 y colisionarían con el artículo base real.
-_ARTICLE_RE = re.compile(r"^ARTÍCULO\s+(\d+)(?:[\s-]*([A-Za-z0-9]+))?", re.IGNORECASE)
+# El Libro I añade dos variantes: el signo ordinal tras el número ("ARTÍCULO 1°."
+# en los Arts. 1–10, que se consume para no filtrarse al texto) y la letra Ñ como
+# sufijo ("38Ñ", Ley 2292/2023, tras la serie 38A–38N).
+_ARTICLE_RE = re.compile(r"^ARTÍCULO\s+(\d+)[°º]?(?:[\s-]*([A-Za-zÑñ0-9]+))?", re.IGNORECASE)
 _LIBRO_RE = re.compile(r"^LIBRO\s+", re.IGNORECASE)
 _TITULO_RE = re.compile(r"^T[IÍ]TULO\s+", re.IGNORECASE)
 _CAPITULO_RE = re.compile(r"^CAP[IÍ]TULO\s+", re.IGNORECASE)
 _NORMA_ANTERIOR_RE = re.compile(r"^(Norma Anterior|Texto Anterior)", re.IGNORECASE)
 _NOTA_RE = re.compile(r"^Nota:", re.IGNORECASE)
 _WHITESPACE_RE = re.compile(r"\s+")
-
-# Libro II — Parte Especial — arranca en el Art. 101 (Ley 599 de 2000).
-# Verificado contra el HTML fuente: LIBRO SEGUNDO precede directamente al Art. 101.
-LIBRO_II_START_ARTICLE = 101
 
 
 def fetch_page(url: str, raw_path: Path) -> str:
@@ -80,7 +79,7 @@ def _is_centered_heading(tag) -> bool:
 
 
 def _save_article(articles: list[dict], article: dict | None) -> None:
-    if article and article["numero"] >= LIBRO_II_START_ARTICLE:
+    if article:
         articles.append(article)
 
 
@@ -211,7 +210,7 @@ def _strip_nombre_prefix(texto: str, nombre: str) -> str:
 
 def build_metadata(articles: list[dict], source_url: str) -> dict:
     return {
-        "title": "Código Penal Colombiano (Ley 599 de 2000) — Libro II, Parte Especial",
+        "title": "Código Penal Colombiano (Ley 599 de 2000)",
         "source_url": source_url,
         "scraped_at": datetime.now(timezone.utc).isoformat(),
         "total_articles": len(articles),
@@ -230,7 +229,7 @@ def main() -> None:
     OUTPUT_PATH.write_text(
         json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    print(f"✓ {meta['total_articles']} artículos (Libro II) → {OUTPUT_PATH}")
+    print(f"✓ {meta['total_articles']} artículos (Libros I y II) → {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
