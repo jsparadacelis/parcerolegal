@@ -40,13 +40,41 @@ def test_article_has_required_fields():
 
 
 def test_article_id_format():
-    """El id sigue el patrón 'art_<numero>' (ej: 'art_1', 'art_42')."""
+    """El id sigue el patrón 'art_<numero>[<sufijo>]' (ej: 'art_1', 'art_22A')."""
     articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
-    pattern = re.compile(r"^art_\d+$")
+    pattern = re.compile(r"^art_\d+[A-Z]?$")
     for art in articles:
         assert pattern.match(art["id"]), (
-            f"id inválido: '{art['id']}' — debe seguir el patrón art_<número>"
+            f"id inválido: '{art['id']}' — debe seguir el patrón art_<número>[<sufijo>]"
         )
+
+
+def test_lettered_article_keeps_sufijo():
+    """'ARTÍCULO 22A.' no debe truncarse a 22: si pierde la letra colisiona con
+    el Art. 22 base (mismo id → mismo chunk_id → mismo punto en Qdrant)."""
+    articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
+    art22a = next((a for a in articles if a["id"] == "art_22A"), None)
+    assert art22a is not None, "Artículo 22A no encontrado"
+    assert art22a["numero"] == 22
+    assert art22a["sufijo"] == "A"
+    assert art22a["url_original"] == f"{SOURCE_URL}#22A"
+    assert "No Repetición" in art22a["texto"]
+
+
+def test_base_article_has_no_sufijo():
+    articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
+    art22 = next((a for a in articles if a["id"] == "art_22"), None)
+    assert art22 is not None, "Artículo 22 no encontrado"
+    assert art22["sufijo"] is None
+    assert art22["url_original"] == f"{SOURCE_URL}#22"
+    assert "La paz es un derecho" in art22["texto"]
+    assert "No Repetición" not in art22["texto"]
+
+
+def test_article_ids_are_unique():
+    articles = _parse_articles(SAMPLE_HTML, SOURCE_URL)
+    ids = [art["id"] for art in articles]
+    assert len(ids) == len(set(ids)), f"ids duplicados: {ids}"
 
 
 def test_article_numero_is_positive_int():

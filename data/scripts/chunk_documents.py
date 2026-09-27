@@ -1,5 +1,6 @@
 import json
 import re
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -100,10 +101,13 @@ def chunk_constitucion(constitucion_path: Path) -> list[dict]:
         parts = split_text(text)
         for i, part in enumerate(parts):
             chunks.append({
-                "chunk_id": f"constitucion_art_{article['numero']}_{i}",
+                # article['id'] (no 'numero'): art_238 y art_238A comparten
+                # numero=238 y el chunk_id es la semilla del id de punto en Qdrant.
+                "chunk_id": f"constitucion_{article['id']}_{i}",
                 "text": part,
                 "source_type": "constitucion",
                 "article_numero": article["numero"],
+                "sufijo": article.get("sufijo"),
                 "titulo": article["titulo"],
                 "capitulo": article.get("capitulo"),
                 "url_original": article["url_original"],
@@ -216,6 +220,15 @@ def chunk_all_sentencias(sentencias_dir: Path) -> list[dict]:
     return chunks
 
 
+def _ensure_unique_chunk_ids(chunks: list[dict]) -> None:
+    """El id de punto en Qdrant es uuid5(chunk_id): un chunk_id repetido hace
+    que un chunk pise a otro en silencio al subir."""
+    chunk_id_counts = Counter(chunk["chunk_id"] for chunk in chunks)
+    duplicated_ids = sorted(cid for cid, count in chunk_id_counts.items() if count > 1)
+    if duplicated_ids:
+        raise ValueError(f"chunk_ids duplicados: {duplicated_ids}")
+
+
 def build_output(
     constitucion_chunks: list[dict],
     sentencia_chunks: list[dict],
@@ -228,6 +241,7 @@ def build_output(
         + codigo_penal_chunks
         + codigo_sustantivo_trabajo_chunks
     )
+    _ensure_unique_chunk_ids(all_chunks)
     return {
         "metadata": {
             "created_at": datetime.now(timezone.utc).isoformat(),

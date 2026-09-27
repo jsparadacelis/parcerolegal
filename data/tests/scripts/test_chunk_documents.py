@@ -138,6 +138,24 @@ def sample_constitucion(tmp_path):
                 "texto": "ARTÍCULO 11. El derecho a la vida es inviolable.",
                 "url_original": "https://example.com#11",
             },
+            {
+                "id": "art_238",
+                "numero": 238,
+                "sufijo": None,
+                "titulo": "TITULO VIII. DE LA RAMA JUDICIAL",
+                "capitulo": None,
+                "texto": "ARTÍCULO 238. La jurisdicción de lo contencioso administrativo podrá suspender.",
+                "url_original": "https://example.com#238",
+            },
+            {
+                "id": "art_238A",
+                "numero": 238,
+                "sufijo": "A",
+                "titulo": "TITULO VIII. DE LA RAMA JUDICIAL",
+                "capitulo": None,
+                "texto": "ARTÍCULO 238A. Créase la Jurisdicción Agraria Rural.",
+                "url_original": "https://example.com#238A",
+            },
         ],
     }
     path = tmp_path / "constitucion.json"
@@ -179,9 +197,30 @@ class TestChunkConstitucion:
 
     def test_chunk_id_format(self, sample_constitucion):
         chunks = self._chunk(sample_constitucion)
-        pattern = re.compile(r"^constitucion_art_\d+_\d+$")
+        pattern = re.compile(r"^constitucion_art_\d+[A-Z]?_\d+$")
         for c in chunks:
             assert pattern.match(c["chunk_id"]), f"chunk_id inválido: {c['chunk_id']}"
+
+    def test_lettered_article_uses_full_id_not_bare_numero(self, sample_constitucion):
+        """art_238 y art_238A comparten numero=238: el chunk_id debe salir del
+        'id' completo o el 238A pisa al 238 en Qdrant (id de punto = uuid5(chunk_id))."""
+        chunks = self._chunk(sample_constitucion)
+        by_id = {c["chunk_id"]: c for c in chunks}
+        assert by_id["constitucion_art_238_0"]["sufijo"] is None
+        assert "contencioso" in by_id["constitucion_art_238_0"]["text"]
+        assert by_id["constitucion_art_238A_0"]["sufijo"] == "A"
+        assert by_id["constitucion_art_238A_0"]["article_numero"] == 238
+        assert "Agraria Rural" in by_id["constitucion_art_238A_0"]["text"]
+
+    def test_chunk_ids_are_unique(self, sample_constitucion):
+        chunks = self._chunk(sample_constitucion)
+        chunk_ids = [c["chunk_id"] for c in chunks]
+        assert len(chunk_ids) == len(set(chunk_ids))
+
+    def test_article_without_sufijo_key_defaults_to_none(self, sample_constitucion):
+        chunks = self._chunk(sample_constitucion)
+        art1 = next(c for c in chunks if c["chunk_id"] == "constitucion_art_1_0")
+        assert art1["sufijo"] is None
 
     def test_preserves_article_metadata(self, sample_constitucion):
         chunks = self._chunk(sample_constitucion)
@@ -576,6 +615,16 @@ class TestBuildOutput:
         assert output["metadata"]["sources"]["sentencias"] == 5
         assert output["metadata"]["sources"]["codigo_penal"] == 4
         assert output["metadata"]["sources"]["codigo_sustantivo_trabajo"] == 2
+
+    def test_rejects_duplicated_chunk_ids(self):
+        """Un chunk_id repetido se convierte en el mismo punto de Qdrant y uno
+        pisa al otro en silencio: mejor fallar al generar chunks.json."""
+        const = [
+            {"chunk_id": "constitucion_art_22_0", "source_type": "constitucion"},
+            {"chunk_id": "constitucion_art_22_0", "source_type": "constitucion"},
+        ]
+        with pytest.raises(ValueError, match="constitucion_art_22_0"):
+            self._build(const, [], [])
 
     def test_codigo_penal_empty_list_counts_zero(self):
         const = [{"chunk_id": "c1", "source_type": "constitucion"}]

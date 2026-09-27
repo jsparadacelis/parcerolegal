@@ -198,8 +198,9 @@ def _append_narrow_source_caveat(answer: str, area: str, document_title: str) ->
 def _chunk_to_source(chunk: RetrievedChunk) -> Source:
     if chunk.source_type == SOURCE_TYPE_CONSTITUCION:
         article_numero = chunk.metadata.get("article_numero", "")
+        sufijo = chunk.metadata.get("sufijo") or ""
         titulo = chunk.metadata.get("titulo", "")
-        title = f"Art. {article_numero} — {titulo}" if article_numero else titulo
+        title = f"Art. {article_numero}{sufijo} — {titulo}" if article_numero else titulo
         url = chunk.metadata.get("url_original", "")
     elif chunk.source_type == SOURCE_TYPE_CODIGO_PENAL:
         title = _codigo_penal_title(chunk.metadata)

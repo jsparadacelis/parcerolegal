@@ -124,6 +124,22 @@ class TestBuildPayload:
         assert payload["article_numero"] == 1
         assert payload["titulo"] == "TITULO I"
         assert "text" in payload
+        assert payload["sufijo"] is None
+
+    def test_constitucion_payload_includes_sufijo(self):
+        chunk = {
+            "chunk_id": "constitucion_art_238A_0",
+            "text": "Artículo 238A. Créase la Jurisdicción Agraria Rural.",
+            "source_type": "constitucion",
+            "article_numero": 238,
+            "sufijo": "A",
+            "titulo": "TITULO VIII",
+            "capitulo": None,
+            "url_original": "https://example.com#238A",
+        }
+        payload = self._build(chunk)
+        assert payload["article_numero"] == 238
+        assert payload["sufijo"] == "A"
 
     def test_sentencia_payload(self):
         chunk = {

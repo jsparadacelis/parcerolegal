@@ -54,6 +54,7 @@ def build_payload(chunk: dict) -> dict:
 
     if chunk["source_type"] == "constitucion":
         payload["article_numero"] = chunk["article_numero"]
+        payload["sufijo"] = chunk.get("sufijo")
         payload["titulo"] = chunk["titulo"]
         payload["capitulo"] = chunk.get("capitulo")
         payload["url_original"] = chunk["url_original"]

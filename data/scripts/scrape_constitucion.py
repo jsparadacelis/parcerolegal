@@ -10,7 +10,10 @@ SOURCE_URL = "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=
 RAW_PATH = Path("data/raw/constitucion.html")
 OUTPUT_PATH = Path("data/processed/constitucion.json")
 
-_ARTICLE_RE = re.compile(r"^ARTÍCULO\s+(\d+)", re.IGNORECASE)
+# Reformas posteriores a 1991 agregan artículos con sufijo de letra (22A, 178A,
+# 238A, 257A). Sin capturar la letra, "238A" se truncaba a 238 y compartía id
+# (y por ende chunk_id y punto en Qdrant) con el Art. 238 base, pisándolo.
+_ARTICLE_RE = re.compile(r"^ARTÍCULO\s+(\d+)([A-Z])?\b", re.IGNORECASE)
 _TRANSITORIO_RE = re.compile(r"TRANSITORIO", re.IGNORECASE)
 _TITULO_RE = re.compile(r"^TITULO\s+", re.IGNORECASE)
 _CAPITULO_RE = re.compile(r"^CAP[IÍ]TULO\s+", re.IGNORECASE)
@@ -160,13 +163,16 @@ def parse_articles(html: str, source_url: str) -> list[dict]:
 
             _save_article(articles, current_article)
             numero = int(article_match.group(1))
+            sufijo = article_match.group(2).upper() if article_match.group(2) else None
+            numero_label = f"{numero}{sufijo or ''}"
             current_article = {
-                "id": f"art_{numero}",
+                "id": f"art_{numero_label}",
                 "numero": numero,
+                "sufijo": sufijo,
                 "titulo": current_titulo,
                 "capitulo": current_capitulo,
                 "texto": text,
-                "url_original": f"{source_url}#{numero}",
+                "url_original": f"{source_url}#{numero_label}",
             }
             continue
 
