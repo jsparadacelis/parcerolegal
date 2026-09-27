@@ -48,6 +48,21 @@ def another_relevant_constitucion_chunk() -> RetrievedChunk:
     )
 
 
+def a_constitucion_chunk_with_sufijo() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="constitucion_art_238A_0",
+        text="Créase la Jurisdicción Agraria Rural.",
+        score=0.80,
+        source_type="constitucion",
+        metadata={
+            "article_numero": 238,
+            "sufijo": "A",
+            "titulo": "TITULO VIII. DE LA RAMA JUDICIAL",
+            "url_original": "http://example.com/constitucion#238A",
+        },
+    )
+
+
 def an_irrelevant_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c2",
@@ -292,6 +307,15 @@ class TestSourceMapping:
         assert source.source_type == "constitucion"
         assert "30" in source.title
         assert source.url == "http://example.com/art30"
+
+    def test_constitucion_source_title_includes_sufijo(self, use_case, store, llm):
+        store.search.return_value = [a_constitucion_chunk_with_sufijo()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿Qué es la jurisdicción agraria?")
+
+        assert result.sources[0].title == "Art. 238A — TITULO VIII. DE LA RAMA JUDICIAL"
+        assert result.sources[0].url == "http://example.com/constitucion#238A"
 
     def test_sources_built_from_sentencia_chunk(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk()]
