@@ -7,6 +7,8 @@ from backend.app.domain.entities import (
     SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
     SOURCE_TYPE_SENTENCIA,
+    DependencyStatus,
+    HealthReport,
     QueryLog,
     QueryResult,
     RetrievedChunk,
@@ -144,3 +146,40 @@ class TestQueryResult:
         assert len(result.sources) == 1
         assert result.out_of_scope is False
         assert result.share_token == "kJ3f9xQb2p1"
+
+
+def a_healthy_status() -> DependencyStatus:
+    return DependencyStatus(ok=True, latency_ms=120, error=None)
+
+
+def a_failing_status() -> DependencyStatus:
+    return DependencyStatus(ok=False, latency_ms=5000, error="ReadTimeout")
+
+
+def a_skipped_status() -> DependencyStatus:
+    return DependencyStatus(ok=True, latency_ms=0, error=None, skipped=True)
+
+
+class TestDependencyStatus:
+    def test_is_not_skipped_by_default(self):
+        assert a_healthy_status().skipped is False
+
+    def test_skipped_factory_is_ok_without_latency(self):
+        assert DependencyStatus.skipped_check() == a_skipped_status()
+
+
+class TestHealthReport:
+    def test_is_healthy_when_every_check_is_ok(self):
+        report = HealthReport(checks={"qdrant": a_healthy_status(), "groq": a_healthy_status()})
+
+        assert report.is_healthy is True
+
+    def test_is_not_healthy_when_any_check_fails(self):
+        report = HealthReport(checks={"qdrant": a_healthy_status(), "groq": a_failing_status()})
+
+        assert report.is_healthy is False
+
+    def test_skipped_checks_do_not_degrade_health(self):
+        report = HealthReport(checks={"qdrant": a_healthy_status(), "supabase": a_skipped_status()})
+
+        assert report.is_healthy is True

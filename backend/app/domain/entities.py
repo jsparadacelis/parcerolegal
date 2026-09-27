@@ -66,3 +66,31 @@ class QueryLog:
     detected_area: str | None
     out_of_scope: bool
     share_token: str
+
+
+@dataclass(frozen=True)
+class DependencyStatus:
+    """Resultado del chequeo de una dependencia externa (Qdrant, Groq...).
+
+    `error` es un mensaje seguro de exponer públicamente: nunca contiene
+    URLs, secretos ni el detalle crudo de la excepción. `skipped` marca una
+    dependencia opcional sin configurar, que no degrada la salud del servicio.
+    """
+
+    ok: bool
+    latency_ms: int
+    error: str | None
+    skipped: bool = False
+
+    @classmethod
+    def skipped_check(cls) -> DependencyStatus:
+        return cls(ok=True, latency_ms=0, error=None, skipped=True)
+
+
+@dataclass(frozen=True)
+class HealthReport:
+    checks: dict[str, DependencyStatus]
+
+    @property
+    def is_healthy(self) -> bool:
+        return all(status.ok for status in self.checks.values())

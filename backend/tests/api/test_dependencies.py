@@ -4,11 +4,21 @@ from __future__ import annotations
 
 import pytest
 
-from backend.app.api.dependencies import _build_query_log_adapter, _build_query_log_store
+from backend.app.api.dependencies import (
+    _build_health_probes,
+    _build_query_log_adapter,
+    _build_query_log_store,
+)
 from backend.app.infrastructure.background_query_log_store import (
     BackgroundQueryLogStore,
 )
 from backend.app.infrastructure.config import Settings
+from backend.app.infrastructure.health_probes import (
+    GroqProbe,
+    JinaProbe,
+    QdrantProbe,
+    SupabaseProbe,
+)
 from backend.app.infrastructure.supabase_query_log_store import (
     SupabaseQueryLogStore,
 )
@@ -50,3 +60,23 @@ class TestBuildQueryLogAdapter:
         )
 
         assert isinstance(adapter, SupabaseQueryLogStore)
+
+
+class TestBuildHealthProbes:
+    def test_probes_every_external_dependency(self):
+        probes = _build_health_probes(settings())
+
+        assert set(probes) == {"qdrant", "jina", "groq", "supabase"}
+
+    def test_wires_the_concrete_probes(self):
+        probes = _build_health_probes(
+            settings(supabase_url="https://proj.supabase.co", supabase_key="key")
+        )
+
+        assert isinstance(probes["qdrant"], QdrantProbe)
+        assert isinstance(probes["jina"], JinaProbe)
+        assert isinstance(probes["groq"], GroqProbe)
+        assert isinstance(probes["supabase"], SupabaseProbe)
+
+    def test_supabase_is_skipped_when_not_configured(self):
+        assert _build_health_probes(settings())["supabase"] is None

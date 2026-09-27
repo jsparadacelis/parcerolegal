@@ -12,14 +12,22 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from backend.app.api.dependencies import (
+    get_deep_health_check_use_case,
     get_settings,
     get_shared_query_use_case,
     get_use_case,
 )
 from backend.app.api.main import app
+from backend.app.application.deep_health_check_use_case import DeepHealthCheckUseCase
 from backend.app.application.get_shared_query_use_case import GetSharedQueryUseCase
 from backend.app.application.query_use_case import QueryUseCase
-from backend.app.domain.entities import QueryLog, RetrievedChunk, Source
+from backend.app.domain.entities import (
+    DependencyStatus,
+    HealthReport,
+    QueryLog,
+    RetrievedChunk,
+    Source,
+)
 from backend.app.domain.ports import (
     Embedder,
     LLMClient,
@@ -131,14 +139,21 @@ def test_settings() -> Settings:
 
 
 @pytest.fixture
+def deep_health_check_use_case() -> DeepHealthCheckUseCase:
+    return create_autospec(DeepHealthCheckUseCase, spec_set=True, instance=True)
+
+
+@pytest.fixture
 def client(
     test_settings: Settings,
     use_case: QueryUseCase,
     shared_query_use_case: GetSharedQueryUseCase,
+    deep_health_check_use_case: DeepHealthCheckUseCase,
 ) -> TestClient:
     app.dependency_overrides[get_settings] = lambda: test_settings
     app.dependency_overrides[get_use_case] = lambda: use_case
     app.dependency_overrides[get_shared_query_use_case] = lambda: shared_query_use_case
+    app.dependency_overrides[get_deep_health_check_use_case] = lambda: deep_health_check_use_case
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -181,6 +196,66 @@ class TestHealthEndpoint:
 
     def test_shows_test_environment(self, client: TestClient):
         assert client.get("/api/health").json()["environment"] == "testing"
+
+
+def a_healthy_report() -> HealthReport:
+    return HealthReport(
+        checks={
+            "qdrant": DependencyStatus(ok=True, latency_ms=120, error=None),
+            "groq": DependencyStatus(ok=True, latency_ms=80, error=None),
+            "supabase": DependencyStatus.skipped_check(),
+        }
+    )
+
+
+def a_degraded_report() -> HealthReport:
+    return HealthReport(
+        checks={
+            "qdrant": DependencyStatus(ok=True, latency_ms=120, error=None),
+            "groq": DependencyStatus(
+                ok=False, latency_ms=95, error="el modelo 'x' no está disponible en Groq"
+            ),
+        }
+    )
+
+
+class TestDeepHealthEndpoint:
+    def test_returns_200_when_every_dependency_is_ok(self, client, deep_health_check_use_case):
+        deep_health_check_use_case.execute.return_value = a_healthy_report()
+
+        response = client.get("/api/health/deep")
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+
+    def test_returns_503_when_a_dependency_fails(self, client, deep_health_check_use_case):
+        deep_health_check_use_case.execute.return_value = a_degraded_report()
+
+        response = client.get("/api/health/deep")
+
+        assert response.status_code == 503
+        assert response.json()["status"] == "degraded"
+
+    def test_reports_each_check(self, client, deep_health_check_use_case):
+        deep_health_check_use_case.execute.return_value = a_degraded_report()
+
+        checks = client.get("/api/health/deep").json()["checks"]
+
+        assert checks["qdrant"] == {"ok": True, "latency_ms": 120, "error": None, "skipped": False}
+        assert checks["groq"]["ok"] is False
+        assert checks["groq"]["error"] == "el modelo 'x' no está disponible en Groq"
+
+    def test_reports_skipped_checks(self, client, deep_health_check_use_case):
+        deep_health_check_use_case.execute.return_value = a_healthy_report()
+
+        checks = client.get("/api/health/deep").json()["checks"]
+
+        assert checks["supabase"]["skipped"] is True
+
+    def test_shallow_health_does_not_run_the_deep_checks(self, client, deep_health_check_use_case):
+        client.get("/api/health")
+
+        deep_health_check_use_case.execute.assert_not_called()
 
 
 class TestQueryEndpoint:

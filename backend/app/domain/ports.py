@@ -46,3 +46,20 @@ class QueryLogFinder(Protocol):
     """
 
     def find_by_share_token(self, share_token: str) -> QueryLog | None: ...
+
+
+class DependencyCheckError(Exception):
+    """La dependencia respondió pero no está sana (colección vacía, modelo
+    retirado, HTTP 4xx/5xx...). Su mensaje es seguro de exponer: quien la
+    lance no debe incluir URLs ni credenciales."""
+
+
+class DependencyProbe(Protocol):
+    """Verifica que una dependencia externa esté operativa.
+
+    `check` no retorna nada si la dependencia está sana; lanza
+    DependencyCheckError si responde en un estado inválido, o deja propagar
+    errores de red (timeout, conexión) para que el use case los traduzca.
+    """
+
+    def check(self) -> None: ...

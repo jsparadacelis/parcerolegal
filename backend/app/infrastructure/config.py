@@ -18,6 +18,15 @@ JINA_EMBEDDING_TASK = "retrieval.query"
 GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Ruta de búsqueda de Qdrant; se formatea con la colección y se cuelga del host.
 QDRANT_SEARCH_PATH = "/collections/{collection}/points/search"
+QDRANT_COLLECTION_PATH = "/collections/{collection}"
+# Listar modelos no consume tokens; sirve para detectar un modelo retirado.
+GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models"
+
+# --- Health check profundo ---------------------------------------------------
+HEALTH_CHECK_TIMEOUT_SECONDS = 5
+# Evita que llamadas repetidas a /api/health/deep multipliquen el tráfico
+# (y el costo de Jina) hacia las dependencias externas.
+HEALTH_CHECK_CACHE_TTL_SECONDS = 30.0
 
 # --- Parámetros de red (antes hardcodeados en los adaptadores) -------------
 JINA_TIMEOUT_SECONDS = 10
