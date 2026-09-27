@@ -40,6 +40,7 @@ def a_query_log(
     detected_area: str | None = "derecho de familia y sucesiones (regulado por el Código Civil)",
     out_of_scope: bool = True,
     share_token: str = "kJ3f9xQb2p1",
+    processing_time_ms: int | None = None,
 ) -> QueryLog:
     return QueryLog(
         question=question,
@@ -49,6 +50,7 @@ def a_query_log(
         detected_area=detected_area,
         out_of_scope=out_of_scope,
         share_token=share_token,
+        processing_time_ms=processing_time_ms,
     )
 
 
@@ -74,6 +76,7 @@ class TestSupabaseQueryLogStoreSave:
                 top_score=0.38,
                 detected_area="derecho penal",
                 out_of_scope=True,
+                processing_time_ms=1834,
             )
         )
 
@@ -88,6 +91,7 @@ class TestSupabaseQueryLogStoreSave:
             "detected_area": "derecho penal",
             "out_of_scope": True,
             "share_token": "kJ3f9xQb2p1",
+            "processing_time_ms": 1834,
         }
 
     def test_posts_sources_as_list_of_dicts(self, store, mock_http):
@@ -192,6 +196,29 @@ class TestSupabaseQueryLogStoreFindByShareToken:
         log = store.find_by_share_token("kJ3f9xQb2p1")
 
         assert log.sources == [a_source()]
+
+    def test_reads_processing_time_ms_when_present(self, store, mock_http):
+        mock_http.add(
+            responses.GET,
+            _INSERT_URL,
+            json=[
+                {
+                    "question": "¿Qué es el habeas corpus?",
+                    "answer": "El habeas corpus es un derecho fundamental.",
+                    "sources": [],
+                    "top_score": 0.85,
+                    "detected_area": None,
+                    "out_of_scope": False,
+                    "share_token": "kJ3f9xQb2p1",
+                    "processing_time_ms": 1834,
+                }
+            ],
+            status=200,
+        )
+
+        log = store.find_by_share_token("kJ3f9xQb2p1")
+
+        assert log.processing_time_ms == 1834
 
     def test_sends_share_token_filter_and_auth_headers(self, store, mock_http):
         mock_http.add(responses.GET, _INSERT_URL, json=[], status=200)

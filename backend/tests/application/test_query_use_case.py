@@ -776,6 +776,39 @@ class TestQueryPersistence:
         assert saved.detected_area is not None
         assert "Civil" in saved.detected_area
 
+    def test_saved_record_carries_the_same_processing_time_returned_in_scope(
+        self, use_case, store, llm, query_log_store
+    ):
+        """El p95 medido en `queries` debe ser la misma latencia que ve el
+        cliente en `processing_time_ms`, no una medición paralela."""
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.processing_time_ms == round(result.processing_time_ms)
+
+    def test_saved_record_carries_the_same_processing_time_returned_out_of_scope(
+        self, use_case, store, query_log_store
+    ):
+        store.search.return_value = []
+
+        result = use_case.execute("pregunta fuera de alcance")
+
+        saved = query_log_store.save.call_args.args[0]
+        assert saved.processing_time_ms == round(result.processing_time_ms)
+
+    def test_saved_processing_time_is_whole_milliseconds(
+        self, use_case, store, query_log_store
+    ):
+        store.search.return_value = []
+
+        use_case.execute("pregunta fuera de alcance")
+
+        saved = query_log_store.save.call_args.args[0]
+        assert isinstance(saved.processing_time_ms, int)
+
     def test_persistence_failure_does_not_break_response(
         self, use_case, store, query_log_store
     ):

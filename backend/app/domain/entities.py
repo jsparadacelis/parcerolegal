@@ -57,6 +57,11 @@ class QueryLog:
     valor que se devuelve al cliente en QueryResult — un lookup posterior por
     ese token (GetSharedQueryUseCase/QueryLogFinder) encuentra este registro
     exacto, ya persistido, sin recalcular nada.
+
+    `processing_time_ms` es la misma latencia que se devuelve en
+    QueryResult.processing_time_ms, redondeada a ms enteros: permite medir
+    p50/p95 de producción desde `queries`. None en filas anteriores a la
+    migración 006, que no la guardaban.
     """
 
     question: str
@@ -66,6 +71,7 @@ class QueryLog:
     detected_area: str | None
     out_of_scope: bool
     share_token: str
+    processing_time_ms: int | None = None
 
 
 @dataclass(frozen=True)
