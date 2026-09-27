@@ -8,9 +8,23 @@ import { ResultPanel } from '@/components/ResultPanel'
 import { ErrorState } from '@/components/ErrorState'
 import { Logo } from '@/components/Logo'
 import { queryLegal, getShare, ApiError } from '@/lib/api'
-import type { QueryResponse } from '@/lib/types'
+import type { QueryResponse, SharedQuery } from '@/lib/types'
 
 const EXAMPLE_QUERY = '¿Qué es el habeas corpus y cómo lo puedo usar?'
+const SHARE_NOT_FOUND_MESSAGE =
+  'No encontramos esta consulta compartida. Puede que el enlace esté mal o haya expirado. Haz tu propia pregunta abajo.'
+
+// El share guardado trae lo mismo que ResultPanel necesita, salvo metadatos
+// de la consulta original; el token del share es el propio id de la URL.
+function toQueryResponse(shared: SharedQuery, shareToken: string): QueryResponse {
+  return {
+    answer: shared.answer,
+    sources: shared.sources,
+    out_of_scope: shared.out_of_scope,
+    processing_time_ms: 0,
+    share_token: shareToken,
+  }
+}
 
 export default function SharedQueryPage() {
   const params = useParams<{ id: string }>()
@@ -21,7 +35,6 @@ export default function SharedQueryPage() {
   const [error, setError] = useState<string | null>(null)
   // Guardamos la pregunta enviada para mostrarla como burbuja del usuario.
   const [submittedQuery, setSubmittedQuery] = useState('')
-  const [initialValue, setInitialValue] = useState('')
 
   const handleSubmit = async (query: string) => {
     setIsLoading(true)
@@ -39,20 +52,30 @@ export default function SharedQueryPage() {
     }
   }
 
+  // Carga la respuesta guardada del share y la muestra tal cual: NO vuelve a
+  // correr el RAG. Solo una pregunta nueva desde el SearchBox llama queryLegal.
   useEffect(() => {
     if (!shareId) return
     let cancelled = false
+    setIsLoading(true)
 
-    getShare(shareId).then((shared) => {
-      if (cancelled || !shared) return
-      setInitialValue(shared.question)
-      handleSubmit(shared.question)
-    })
+    getShare(shareId)
+      .then((shared) => {
+        if (cancelled) return
+        if (!shared) {
+          setError(SHARE_NOT_FOUND_MESSAGE)
+          return
+        }
+        setSubmittedQuery(shared.question)
+        setResponse(toQueryResponse(shared, shareId))
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
 
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareId])
 
   const handleExampleClick = () => handleSubmit(EXAMPLE_QUERY)
@@ -86,7 +109,7 @@ export default function SharedQueryPage() {
         )}
 
         {/* Search Box */}
-        <SearchBox onSubmit={handleSubmit} isLoading={isLoading} initialValue={initialValue} />
+        <SearchBox onSubmit={handleSubmit} isLoading={isLoading} />
 
         {/* Disclaimer hint — debajo del buscador */}
         <div className="mt-3 flex items-center justify-center gap-1.5">
