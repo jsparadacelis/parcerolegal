@@ -65,9 +65,10 @@ export default function AboutPage() {
               <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
               <span>
                 <strong className="text-ink font-semibold">Código Penal (Ley 599 de 2000)</strong>
-                {' '}— los 480 artículos del Libro II, la parte que define cada delito y la
-                pena que le corresponde: hurto, homicidio, estafa, violencia intrafamiliar
-                y demás.
+                {' '}— completo: la parte general (dolo y culpa, tentativa, autoría y
+                complicidad, causales de ausencia de responsabilidad, penas y medidas de
+                seguridad) y cada delito con su pena: hurto, homicidio, estafa, violencia
+                intrafamiliar y demás.
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -131,12 +132,10 @@ export default function AboutPage() {
             </p>
             <p className="mb-3 text-[14.5px] leading-relaxed text-ink-2">
               El corpus cubre la Constitución, jurisprudencia constitucional seleccionada,
-              los delitos del Código Penal y el Código Sustantivo del Trabajo. Quedan por
+              el Código Penal y el Código Sustantivo del Trabajo. Quedan por
               fuera —y se responden como «fuera de alcance»— el derecho de familia y
               sucesiones (divorcio, sociedad conyugal, herencias), el comercial, el
-              administrativo y el tributario. Del Código Penal está la parte que define los
-              delitos, pero todavía no las reglas generales de responsabilidad: dolo y
-              culpa, tentativa, autoría y complicidad.
+              administrativo y el tributario.
             </p>
             <p className="text-[14.5px] leading-relaxed text-ink-2">
               Para decisiones legales que te afecten — una tutela, un contrato, un proceso

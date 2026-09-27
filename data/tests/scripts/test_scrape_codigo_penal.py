@@ -20,6 +20,11 @@ def articles():
     return parse_articles(SAMPLE_HTML, SOURCE_URL)
 
 
+@pytest.fixture
+def articles_by_id(articles):
+    return {art["id"]: art for art in articles}
+
+
 # ---------------------------------------------------------------------------
 # parse_articles — general shape
 # ---------------------------------------------------------------------------
@@ -40,8 +45,8 @@ def test_article_has_required_fields(articles):
 def test_article_id_format(articles):
     """El id sigue el patrón 'cp_art_<numero>[_sufijo]' (ej: 'cp_art_101',
     'cp_art_103_a', 'cp_art_269_1'). El sufijo puede ser letra o número — la Ley
-    599/2000 usa ambos ("243-A" y "269-1")."""
-    pattern = re.compile(r"^cp_art_\d+(_[a-z0-9]+)?$")
+    599/2000 usa ambos ("243-A" y "269-1"), y la Ñ ("38Ñ")."""
+    pattern = re.compile(r"^cp_art_\d+(_[a-z0-9ñ]+)?$")
     for art in articles:
         assert pattern.match(art["id"]), (
             f"id inválido: '{art['id']}' — debe seguir el patrón cp_art_<número>[_sufijo]"
@@ -74,24 +79,79 @@ def test_article_url_original_contains_source(articles):
 
 
 # ---------------------------------------------------------------------------
-# Scope: solo Libro II (Parte Especial)
+# Scope: Libro I (Parte General) + Libro II (Parte Especial)
 # ---------------------------------------------------------------------------
 
 
-def test_only_libro_ii_articles_are_included(articles):
-    """Decisión 2026-07-15: solo Libro II. El fixture incluye Arts. 1 y 27 (Libro I,
-    deben excluirse) y Arts. 101, 103, 239 (Libro II, deben incluirse)."""
+def test_libro_i_and_libro_ii_articles_are_included(articles):
+    """Decisión 2026-07-15 era solo Libro II; desde 2026-09-27 entra también el
+    Libro I (dolo, culpa, tentativa, participación, penas). El fixture incluye
+    Arts. 1, 9, 27 y 38 (Libro I) y 101, 103, 239 (Libro II)."""
     numeros = {art["numero"] for art in articles}
-    assert 1 not in numeros, "Art. 1 es del Libro I y no debe estar en el output"
-    assert 27 not in numeros, "Art. 27 (Tentativa) es del Libro I y no debe estar en el output"
+    assert {1, 9, 27, 38}.issubset(numeros), f"Faltan artículos del Libro I: {numeros}"
     assert {101, 103, 239}.issubset(numeros), f"Faltan artículos del Libro II: {numeros}"
 
 
-def test_articles_have_libro_segundo(articles):
-    for art in articles:
-        assert "LIBRO SEGUNDO" in art["libro"].upper(), (
-            f"cp_art_{art['numero']}: libro no es Libro Segundo: '{art['libro']}'"
-        )
+@pytest.mark.parametrize("article_id,expected_libro", [
+    ("cp_art_1", "LIBRO PRIMERO"),
+    ("cp_art_27", "LIBRO PRIMERO"),
+    ("cp_art_38_ñ", "LIBRO PRIMERO"),
+    ("cp_art_101", "LIBRO SEGUNDO"),
+    ("cp_art_239", "LIBRO SEGUNDO"),
+])
+def test_article_libro_matches_its_book(articles_by_id, article_id, expected_libro):
+    assert expected_libro in articles_by_id[article_id]["libro"].upper()
+
+
+def test_libro_i_article_has_titulo_and_capitulo(articles_by_id):
+    tentativa = articles_by_id["cp_art_27"]
+    assert tentativa["nombre"] == "Tentativa"
+    assert "NORMAS RECTORAS" in tentativa["titulo"].upper()
+    assert tentativa["capitulo"] is not None
+
+    prision_domiciliaria = articles_by_id["cp_art_38"]
+    assert "CONSECUENCIAS JURIDICAS" in prision_domiciliaria["titulo"].upper()
+    assert "DE LAS PENAS" in prision_domiciliaria["capitulo"].upper()
+
+
+def test_article_ids_are_unique(articles):
+    ids = [art["id"] for art in articles]
+    duplicated = {article_id for article_id in ids if ids.count(article_id) > 1}
+    assert not duplicated, f"ids duplicados: {duplicated}"
+
+
+# ---------------------------------------------------------------------------
+# Particularidades del Libro I descubiertas contra HTML real
+# ---------------------------------------------------------------------------
+
+
+def test_ordinal_sign_after_number_not_leaked_into_texto(articles_by_id):
+    """Arts. 1°–10° del Libro I se encabezan 'ARTÍCULO 1°.' con signo de grado.
+    Sin consumirlo, el texto quedaba '°. Dignidad humana . El derecho...' (el
+    nombre no se podía despegar del cuerpo)."""
+    dignidad = articles_by_id["cp_art_1"]
+    assert dignidad["sufijo"] is None
+    assert dignidad["nombre"] == "Dignidad humana"
+    assert dignidad["texto"].startswith("El derecho penal")
+
+
+def test_ordinal_sign_without_em_nombre_not_leaked(articles_by_id):
+    """Art. 9°: sin <em>, el nombre va en texto plano; el '°' no debe quedar
+    como nombre ni al inicio del texto."""
+    conducta_punible = articles_by_id["cp_art_9"]
+    assert "°" not in conducta_punible["nombre"]
+    assert conducta_punible["texto"].startswith("Conducta punible")
+
+
+def test_enie_suffix_gets_distinct_id(articles_by_id):
+    """Art. 38Ñ (Ley 2292/2023): la serie 38A–38Ñ usa la letra Ñ. Sin aceptarla
+    en el sufijo, '38Ñ' truncaba a numero=38 → id 'cp_art_38' duplicado."""
+    extincion = articles_by_id["cp_art_38_ñ"]
+    assert extincion["numero"] == 38
+    assert extincion["sufijo"] == "Ñ"
+    assert "condena queda extinguida" in extincion["texto"]
+    assert "condena queda extinguida" not in articles_by_id["cp_art_38"]["texto"]
+    assert articles_by_id["cp_art_38_g"]["sufijo"] == "G"
 
 
 # ---------------------------------------------------------------------------
@@ -284,6 +344,12 @@ def test_metadata_has_required_fields(articles):
     required = {"title", "source_url", "scraped_at", "total_articles"}
     missing = required - meta.keys()
     assert not missing, f"metadata le faltan campos: {missing}"
+
+
+def test_metadata_title_covers_whole_code(articles):
+    meta = build_metadata(articles, SOURCE_URL)
+    assert "Ley 599 de 2000" in meta["title"]
+    assert "Libro II" not in meta["title"]
 
 
 def test_metadata_source_url_matches(articles):
