@@ -4,6 +4,7 @@ import type { QueryResponse } from '@/lib/types'
 import { SourceCard } from './SourceCard'
 import { Disclaimer } from './Disclaimer'
 import { ShareButton } from './ShareButton'
+import { WhatsAppShareButton } from './WhatsAppShareButton'
 
 interface ResultPanelProps {
   response: QueryResponse
@@ -111,7 +112,7 @@ export function ResultPanel({ response, query }: ResultPanelProps) {
           <Disclaimer />
 
           {/* Barra de acciones */}
-          <div className="mt-4 pt-3.5 border-t border-surface-3 flex items-center gap-1">
+          <div className="mt-4 pt-3.5 border-t border-surface-3 flex flex-wrap items-center gap-1">
             <button
               onClick={() => navigator.clipboard.writeText(response.answer)}
               className="flex items-center gap-1.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium text-ink-3 hover:bg-surface-2 transition-colors"
@@ -120,6 +121,7 @@ export function ResultPanel({ response, query }: ResultPanelProps) {
               Copiar texto
             </button>
             <ShareButton shareToken={response.share_token} />
+            <WhatsAppShareButton shareToken={response.share_token} />
           </div>
         </div>
       </div>

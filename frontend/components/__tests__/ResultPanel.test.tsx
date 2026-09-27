@@ -113,4 +113,11 @@ describe('ResultPanel', () => {
 
     expect(writeText).toHaveBeenCalledWith(`${location.origin}/s/test-token`)
   })
+
+  it('offers sharing the response share_token by WhatsApp', () => {
+    render(<ResultPanel response={mockResponse} query="¿Qué es el habeas corpus?" />)
+
+    const link = screen.getByRole('link', { name: /compartir por whatsapp/i })
+    expect(link.getAttribute('href')).toContain(encodeURIComponent(`${location.origin}/s/test-token`))
+  })
 })
