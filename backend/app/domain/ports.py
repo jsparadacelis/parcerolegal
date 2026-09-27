@@ -63,3 +63,14 @@ class DependencyProbe(Protocol):
     """
 
     def check(self) -> None: ...
+
+
+class ServiceBusyError(Exception):
+    """Un proveedor externo (embeddings, LLM) sigue limitando la tasa de
+    peticiones tras agotar los reintentos. `retry_after_seconds` es cuánto
+    conviene esperar antes de volver a intentar. Su mensaje es seguro de
+    exponer: no incluye URLs ni credenciales."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(f"Proveedor saturado; reintentar en {retry_after_seconds}s")
+        self.retry_after_seconds = retry_after_seconds

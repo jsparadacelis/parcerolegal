@@ -32,9 +32,15 @@ from backend.app.domain.ports import (
     Embedder,
     LLMClient,
     QueryLogFinder,
+    ServiceBusyError,
     VectorStore,
 )
-from backend.app.infrastructure.config import DEFAULT_TOP_K, Settings
+from backend.app.infrastructure.config import (
+    DEFAULT_TOP_K,
+    SERVICE_BUSY_MESSAGE,
+    SERVICE_UNAVAILABLE_MESSAGE,
+    Settings,
+)
 from backend.app.infrastructure.supabase_query_log_store import (
     SupabaseQueryLogStore,
 )
@@ -368,6 +374,59 @@ class TestTimeoutHandling:
         data = lenient_client.post("/api/query", json={"question": _QUESTION}).json()
 
         assert "detail" in data
+
+
+class TestProviderUnavailableHandling:
+    def test_rate_limited_llm_returns_503_with_retry_after(self, lenient_client: TestClient, store, llm):
+        store.search.return_value = [a_relevant_chunk()]
+        llm.generate.side_effect = ServiceBusyError(retry_after_seconds=12)
+
+        response = lenient_client.post("/api/query", json={"question": _QUESTION})
+
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "12"
+        assert response.json() == {"detail": SERVICE_BUSY_MESSAGE}
+
+    def test_rate_limited_embedder_returns_503(self, lenient_client: TestClient, embedder):
+        embedder.embed.side_effect = ServiceBusyError(retry_after_seconds=5)
+
+        response = lenient_client.post("/api/query", json={"question": _QUESTION})
+
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "5"
+
+    @pytest.mark.parametrize(
+        "provider_error",
+        [
+            requests.HTTPError("502 Server Error for url: https://api.jina.ai/v1/embeddings"),
+            requests.ConnectionError("Max retries exceeded with url: https://api.groq.com/x"),
+        ],
+    )
+    def test_provider_failure_returns_503_with_generic_detail(
+        self, lenient_client: TestClient, embedder, provider_error
+    ):
+        embedder.embed.side_effect = provider_error
+
+        response = lenient_client.post("/api/query", json={"question": _QUESTION})
+
+        assert response.status_code == 503
+        assert response.json() == {"detail": SERVICE_UNAVAILABLE_MESSAGE}
+
+    def test_provider_failure_log_does_not_leak_url(self, lenient_client: TestClient, embedder, caplog):
+        embedder.embed.side_effect = requests.HTTPError("502 for url: https://api.jina.ai/v1/embeddings")
+
+        with caplog.at_level(logging.WARNING, logger="parcerolegal"):
+            lenient_client.post("/api/query", json={"question": _QUESTION})
+
+        assert "HTTPError" in caplog.text
+        assert "https://" not in caplog.text
+
+    def test_timeout_keeps_its_own_message(self, lenient_client: TestClient, embedder):
+        embedder.embed.side_effect = requests.exceptions.Timeout("slow")
+
+        response = lenient_client.post("/api/query", json={"question": _QUESTION})
+
+        assert response.json()["detail"] != SERVICE_UNAVAILABLE_MESSAGE
 
 
 class TestInputValidation:
