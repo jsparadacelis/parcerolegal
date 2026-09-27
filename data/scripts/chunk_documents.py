@@ -8,6 +8,7 @@ CONSTITUCION_PATH = Path("data/processed/constitucion.json")
 SENTENCIAS_DIR = Path("data/processed/sentencias")
 CODIGO_PENAL_PATH = Path("data/processed/codigo_penal.json")
 CODIGO_SUSTANTIVO_TRABAJO_PATH = Path("data/processed/codigo_sustantivo_trabajo.json")
+CODIGO_CIVIL_PATH = Path("data/processed/codigo_civil.json")
 OUTPUT_PATH = Path("data/processed/chunks.json")
 
 CHUNK_MAX = 1000
@@ -186,6 +187,40 @@ def chunk_codigo_sustantivo_trabajo(codigo_sustantivo_trabajo_path: Path) -> lis
     return chunks
 
 
+def chunk_codigo_civil(codigo_civil_path: Path) -> list[dict]:
+    data = json.loads(codigo_civil_path.read_text(encoding="utf-8"))
+    chunks: list[dict] = []
+
+    for article in data["articles"]:
+        text = article["texto"].strip()
+        if not text:
+            # ~650 artículos del Código Civil están íntegramente derogados (buena
+            # parte del Libro I por el Código del Menor, la Ley 1306/2009 y el
+            # Código General del Proceso); su único contenido en la fuente es la
+            # nota de derogatoria del editor, ya eliminada por el scraper.
+            continue
+
+        parts = split_text(text)
+        for i, part in enumerate(parts):
+            chunks.append({
+                # article['id'] (no 'numero'): un artículo con sufijo comparte
+                # numero con su base y el chunk_id es la semilla del id en Qdrant.
+                "chunk_id": f"codigo_civil_{article['id']}_{i}",
+                "text": part,
+                "source_type": "codigo_civil",
+                "article_id": article["id"],
+                "article_numero": article["numero"],
+                "sufijo": article.get("sufijo"),
+                "nombre": article.get("nombre"),
+                "libro": article.get("libro"),
+                "titulo": article["titulo"],
+                "capitulo": article.get("capitulo"),
+                "url_original": article["url_original"],
+            })
+
+    return chunks
+
+
 def chunk_sentencia(sentencia_path: Path) -> list[dict]:
     data = json.loads(sentencia_path.read_text(encoding="utf-8"))
     meta = data["metadata"]
@@ -234,12 +269,14 @@ def build_output(
     sentencia_chunks: list[dict],
     codigo_penal_chunks: list[dict],
     codigo_sustantivo_trabajo_chunks: list[dict],
+    codigo_civil_chunks: list[dict],
 ) -> dict:
     all_chunks = (
         constitucion_chunks
         + sentencia_chunks
         + codigo_penal_chunks
         + codigo_sustantivo_trabajo_chunks
+        + codigo_civil_chunks
     )
     _ensure_unique_chunk_ids(all_chunks)
     return {
@@ -251,6 +288,7 @@ def build_output(
                 "sentencias": len(sentencia_chunks),
                 "codigo_penal": len(codigo_penal_chunks),
                 "codigo_sustantivo_trabajo": len(codigo_sustantivo_trabajo_chunks),
+                "codigo_civil": len(codigo_civil_chunks),
             },
         },
         "chunks": all_chunks,
@@ -274,7 +312,11 @@ def main() -> None:
     cst_chunks = chunk_codigo_sustantivo_trabajo(CODIGO_SUSTANTIVO_TRABAJO_PATH)
     print(f"  {len(cst_chunks)} chunks de código sustantivo del trabajo")
 
-    output = build_output(const_chunks, sent_chunks, cp_chunks, cst_chunks)
+    print("Chunking código civil...")
+    cc_chunks = chunk_codigo_civil(CODIGO_CIVIL_PATH)
+    print(f"  {len(cc_chunks)} chunks de código civil")
+
+    output = build_output(const_chunks, sent_chunks, cp_chunks, cst_chunks, cc_chunks)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(

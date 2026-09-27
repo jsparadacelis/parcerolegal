@@ -200,6 +200,34 @@ class TestBuildPayload:
         assert payload["parte"] == "PRIMERA PARTE. DERECHO INDIVIDUAL DEL TRABAJO"
         assert "text" in payload
 
+    def test_codigo_civil_payload(self):
+        chunk = {
+            "chunk_id": "codigo_civil_cc_art_1781_0",
+            "text": "El haber de la sociedad conyugal se compone: 1.) De los salarios...",
+            "source_type": "codigo_civil",
+            "article_id": "cc_art_1781",
+            "article_numero": 1781,
+            "sufijo": None,
+            "nombre": "COMPOSICIÓN DE HABER DE LA SOCIEDAD CONYUGAL",
+            "libro": "LIBRO CUARTO. DE LAS OBLIGACIONES EN GENERAL Y DE LOS CONTRATOS",
+            "titulo": "TÍTULO XXII. DE LAS CAPITULACIONES MATRIMONIALES Y DE LA SOCIEDAD CONYUGAL",
+            "capitulo": "CAPÍTULO II. DEL HABER DE LA SOCIEDAD CONYUGAL Y DE SUS CARGAS",
+            "url_original": "http://example.com/codigo_civil_pr054.html#1781",
+        }
+        payload = self._build(chunk)
+        assert payload == {
+            "text": chunk["text"],
+            "source_type": "codigo_civil",
+            "article_id": "cc_art_1781",
+            "article_numero": 1781,
+            "sufijo": None,
+            "nombre": "COMPOSICIÓN DE HABER DE LA SOCIEDAD CONYUGAL",
+            "libro": "LIBRO CUARTO. DE LAS OBLIGACIONES EN GENERAL Y DE LOS CONTRATOS",
+            "titulo": "TÍTULO XXII. DE LAS CAPITULACIONES MATRIMONIALES Y DE LA SOCIEDAD CONYUGAL",
+            "capitulo": "CAPÍTULO II. DEL HABER DE LA SOCIEDAD CONYUGAL Y DE SUS CARGAS",
+            "url_original": "http://example.com/codigo_civil_pr054.html#1781",
+        }
+
 
 # ---------------------------------------------------------------------------
 # filter_chunks_by_source_type

@@ -9,6 +9,7 @@ SOURCE_TYPE_CONSTITUCION = "constitucion"
 SOURCE_TYPE_SENTENCIA = "sentencia"
 SOURCE_TYPE_CODIGO_PENAL = "codigo_penal"
 SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO = "codigo_sustantivo_trabajo"
+SOURCE_TYPE_CODIGO_CIVIL = "codigo_civil"
 
 
 @dataclass(frozen=True)

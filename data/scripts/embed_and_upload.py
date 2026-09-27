@@ -82,6 +82,15 @@ def build_payload(chunk: dict) -> dict:
         payload["titulo"] = chunk["titulo"]
         payload["capitulo"] = chunk.get("capitulo")
         payload["url_original"] = chunk["url_original"]
+    elif chunk["source_type"] == "codigo_civil":
+        payload["article_id"] = chunk["article_id"]
+        payload["article_numero"] = chunk["article_numero"]
+        payload["sufijo"] = chunk.get("sufijo")
+        payload["nombre"] = chunk.get("nombre")
+        payload["libro"] = chunk.get("libro")
+        payload["titulo"] = chunk["titulo"]
+        payload["capitulo"] = chunk.get("capitulo")
+        payload["url_original"] = chunk["url_original"]
 
     return payload
 

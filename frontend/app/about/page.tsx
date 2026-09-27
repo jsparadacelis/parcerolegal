@@ -32,7 +32,8 @@ export default function AboutPage() {
           <p className="text-sm leading-relaxed text-ink-2">
             parcerolegal es un motor de búsqueda legal gratuito para Colombia. Le puedes hacer
             preguntas en lenguaje normal — sin jerga, sin formalismos — y te responde con
-            información real de la Constitución Política y sentencias de la Corte Constitucional.
+            información real de la Constitución Política, los principales códigos y sentencias de
+            la Corte Constitucional.
             No hay trampa: cada respuesta incluye las fuentes donde fue tomada.
           </p>
         </section>
@@ -41,7 +42,7 @@ export default function AboutPage() {
         <section className="mb-8">
           <h2 className="mb-3 text-base font-semibold text-ink">¿De dónde vienen las respuestas?</h2>
           <p className="mb-3 text-sm leading-relaxed text-ink-2">
-            Las respuestas se construyen a partir de cuatro fuentes oficiales:
+            Las respuestas se construyen a partir de cinco fuentes oficiales:
           </p>
           <ul className="mb-3 space-y-2 text-sm text-ink-2">
             <li className="flex items-start gap-2">
@@ -78,6 +79,16 @@ export default function AboutPage() {
                 prestaciones, terminación y derecho colectivo.
               </span>
             </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-primary font-semibold flex-shrink-0">—</span>
+              <span>
+                <strong className="text-ink font-semibold">Código Civil (Ley 57 de 1887)</strong>
+                {' '}— sus 2.684 artículos, de los cuales 2.036 siguen vigentes: personas y
+                familia (matrimonio, divorcio, alimentos, patria potestad), bienes, sucesiones
+                y donaciones, obligaciones y contratos (sociedad conyugal, compraventa,
+                arrendamiento y demás).
+              </span>
+            </li>
           </ul>
           <p className="text-sm leading-relaxed text-ink-2">
             Las sentencias vienen de{' '}
@@ -89,7 +100,7 @@ export default function AboutPage() {
             >
               corteconstitucional.gov.co
             </a>
-            ; la Constitución y los códigos, del{' '}
+            ; la Constitución, el Código Penal y el Código Sustantivo del Trabajo, del{' '}
             <a
               href="https://www.funcionpublica.gov.co/eva/gestornormativo"
               target="_blank"
@@ -97,6 +108,15 @@ export default function AboutPage() {
               className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
             >
               gestor normativo de la Función Pública
+            </a>
+            ; el Código Civil, de la{' '}
+            <a
+              href="http://www.secretariasenado.gov.co/senado/basedoc/codigo_civil.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded"
+            >
+              Secretaría General del Senado
             </a>
             .
           </p>
@@ -131,10 +151,11 @@ export default function AboutPage() {
             </p>
             <p className="mb-3 text-[14.5px] leading-relaxed text-ink-2">
               El corpus cubre la Constitución, jurisprudencia constitucional seleccionada,
-              los delitos del Código Penal y el Código Sustantivo del Trabajo. Quedan por
-              fuera —y se responden como «fuera de alcance»— el derecho de familia y
-              sucesiones (divorcio, sociedad conyugal, herencias), el comercial, el
-              administrativo y el tributario. Del Código Penal está la parte que define los
+              los delitos del Código Penal, el Código Sustantivo del Trabajo y el Código
+              Civil. Quedan por fuera —y se responden como «fuera de alcance»— el derecho
+              comercial, el administrativo, el tributario y las leyes especiales que
+              complementan el Código Civil (por ejemplo, el Código de la Infancia y la
+              Adolescencia o el Código General del Proceso). Del Código Penal está la parte que define los
               delitos, pero todavía no las reglas generales de responsabilidad: dolo y
               culpa, tentativa, autoría y complicidad.
             </p>

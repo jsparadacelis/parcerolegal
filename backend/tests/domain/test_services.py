@@ -1,5 +1,7 @@
 """Tests for domain services — score filtering and out-of-scope detection."""
 
+import pytest
+
 from backend.app.domain.entities import RetrievedChunk, Source
 from backend.app.domain.services import (
     dedupe_sources,
@@ -89,11 +91,28 @@ class TestIsOutOfScope:
 
 
 class TestDetectLegalArea:
-    def test_divorce_maps_to_civil_code(self):
-        area = detect_legal_area("¿puede mi mujer quedarse con todo tras el divorcio?")
+    def test_commercial_topic_maps_to_commercial_code(self):
+        area = detect_legal_area("¿cómo cobro una factura vencida?")
 
         assert area is not None
-        assert "Civil" in area
+        assert "Comercio" in area
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "¿puede mi mujer quedarse con todo tras el divorcio?",
+            "¿cómo se liquida la sociedad conyugal?",
+            "¿quién hereda si no hay testamento?",
+            "¿cuánto es la cuota alimentaria de un hijo?",
+            "¿qué pasa si el arrendatario no paga el arriendo?",
+            "¿qué es la compraventa de un inmueble?",
+        ],
+    )
+    def test_civil_code_topics_no_longer_out_of_scope(self, question):
+        """Decisión 2026-09-27: el Código Civil completo entró al corpus (ver
+        .aiplans/ingest-codigo-civil/): familia, sucesiones y contratos civiles
+        (arrendamiento, compraventa) se resuelven por retrieval normal."""
+        assert detect_legal_area(question) is None
 
     def test_criminal_topic_no_longer_out_of_scope(self):
         """Decisión 2026-07-15: el Código Penal (Libro II) entró al corpus, así

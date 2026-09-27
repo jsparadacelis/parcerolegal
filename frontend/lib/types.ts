@@ -5,6 +5,7 @@ export type SourceType =
   | 'sentencia'
   | 'codigo_penal'
   | 'codigo_sustantivo_trabajo'
+  | 'codigo_civil'
 
 export interface Source {
   chunk_id: string

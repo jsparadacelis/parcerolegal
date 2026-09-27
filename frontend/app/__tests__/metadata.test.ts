@@ -5,6 +5,7 @@ const CORPUS = [
   /corte constitucional/i,
   /c[oó]digo penal/i,
   /c[oó]digo sustantivo del trabajo/i,
+  /c[oó]digo civil/i,
 ]
 
 const descriptions = Object.entries({
