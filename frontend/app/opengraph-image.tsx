@@ -77,7 +77,8 @@ export default function Image() {
             lineHeight: 1.5,
           }}
         >
-          Constitución Política + jurisprudencia colombiana — gratis, en lenguaje normal.
+          Constitución, sentencias de la Corte Constitucional, Código Penal y Código
+          Sustantivo del Trabajo — gratis, en lenguaje normal.
         </div>
       </div>
     ),

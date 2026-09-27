@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL('https://parcerolegal.co'),
   title: "parcerolegal — tu derecho, claro",
-  description: "Motor de búsqueda legal gratuito para Colombia. Consulta la Constitución Política y jurisprudencia de la Corte Constitucional en lenguaje normal. Gratis.",
+  description: "Buscador legal gratis para Colombia: Constitución, sentencias de la Corte Constitucional, Código Penal y Código Sustantivo del Trabajo, en lenguaje normal.",
   alternates: {
     canonical: '/',
   },
@@ -14,13 +14,13 @@ export const metadata: Metadata = {
     url: 'https://parcerolegal.co',
     siteName: 'parcerolegal',
     title: 'parcerolegal — tu derecho, claro',
-    description: 'Motor de búsqueda legal gratuito para Colombia. Consulta la Constitución y jurisprudencia en lenguaje normal.',
+    description: 'Buscador legal gratis para Colombia: Constitución, sentencias de la Corte Constitucional, Código Penal y Código Sustantivo del Trabajo, en lenguaje normal.',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'parcerolegal — tu derecho, claro' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'parcerolegal — tu derecho, claro',
-    description: 'Motor de búsqueda legal gratuito para Colombia. Constitución + jurisprudencia en lenguaje normal.',
+    description: 'Buscador legal gratis para Colombia: Constitución, sentencias de la Corte Constitucional, Código Penal y Código Sustantivo del Trabajo, en lenguaje normal.',
     images: ['/opengraph-image'],
   },
 };
