@@ -31,8 +31,18 @@ HEALTH_CHECK_CACHE_TTL_SECONDS = 30.0
 # --- Parámetros de red (antes hardcodeados en los adaptadores) -------------
 JINA_TIMEOUT_SECONDS = 10
 GROQ_TIMEOUT_SECONDS = 40
+# Reintentos ante 429 (y 5xx transitorios en Jina). MAX_RETRIES es el total de
+# intentos. MAX_RETRY_WAIT_SECONDS acota la espera acumulada por llamada para
+# que embed + generate respondan antes del timeout de 45s del frontend
+# (no hay timeout global en el backend): Jina <= 4s + Groq <= 12s de espera.
+# Si el Retry-After del proveedor no cabe en ese presupuesto, se responde 503
+# de inmediato en vez de esperar en vano.
 GROQ_MAX_RETRIES = 3
 GROQ_RETRY_BASE_DELAY_SECONDS = 1.0
+GROQ_MAX_RETRY_WAIT_SECONDS = 12.0
+JINA_MAX_RETRIES = 3
+JINA_RETRY_BASE_DELAY_SECONDS = 0.5
+JINA_MAX_RETRY_WAIT_SECONDS = 4.0
 # gpt-oss es modelo de razonamiento: el razonamiento consume el mismo
 # max_tokens que la respuesta. "low" deja margen a la respuesta y
 # include_reasoning=False evita recibir el razonamiento en el payload.
@@ -50,6 +60,7 @@ SHARE_ID_BYTES = 8
 # --- Códigos de estado HTTP ------------------------------------------------
 HTTP_TOO_MANY_REQUESTS = 429
 HTTP_SERVICE_UNAVAILABLE = 503
+HTTP_TRANSIENT_SERVER_ERRORS = frozenset({500, 502, 503, 504})
 
 # --- Validación de la petición ---------------------------------------------
 QUESTION_MIN_LENGTH = 3
@@ -61,6 +72,10 @@ API_DESCRIPTION = "Colombian legal search engine powered by RAG"
 API_VERSION = "0.1.0"
 CORS_ALLOW_ORIGINS = ["*"]
 SERVICE_TIMEOUT_MESSAGE = "El servicio tardó demasiado en responder. Por favor intenta de nuevo."
+SERVICE_BUSY_MESSAGE = "Estamos recibiendo muchas consultas en este momento. Intenta de nuevo en unos segundos."
+SERVICE_UNAVAILABLE_MESSAGE = "El servicio no está disponible en este momento. Por favor intenta de nuevo más tarde."
+# Retry-After sugerido al cliente cuando el proveedor no envía uno propio.
+SERVICE_BUSY_RETRY_AFTER_SECONDS = 10
 
 
 class Settings(BaseSettings):

@@ -45,6 +45,39 @@ describe('queryLegal', () => {
     await expect(queryLegal('pregunta')).rejects.toThrow(ApiError)
   })
 
+  it('shows the backend detail when the service is busy (503)', async () => {
+    const detail = 'Estamos recibiendo muchas consultas en este momento. Intenta de nuevo en unos segundos.'
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ detail }),
+    })
+
+    await expect(queryLegal('pregunta')).rejects.toThrow(detail)
+  })
+
+  it('falls back to the generic message when a 503 body has no detail', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => {
+        throw new SyntaxError('Unexpected token')
+      },
+    })
+
+    await expect(queryLegal('pregunta')).rejects.toThrow('No pudimos procesar tu pregunta')
+  })
+
+  it('does not expose the backend detail on other errors', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ detail: 'Internal Server Error' }),
+    })
+
+    await expect(queryLegal('pregunta')).rejects.toThrow('No pudimos procesar tu pregunta')
+  })
+
   it('throws ApiError when fetch rejects (network failure)', async () => {
     ;(global.fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'))
 

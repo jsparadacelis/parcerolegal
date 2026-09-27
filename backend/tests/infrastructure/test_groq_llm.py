@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 import pytest
 import requests
 import responses
 
+from backend.app.domain.ports import ServiceBusyError
 from backend.app.infrastructure.groq_llm import GroqLLMClient
 
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -20,12 +21,18 @@ def _groq_body(content: str) -> dict:
 
 
 @pytest.fixture
-def client() -> GroqLLMClient:
+def sleep() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def client(sleep) -> GroqLLMClient:
     return GroqLLMClient(
         api_key="test-key",
         model=_MODEL,
         temperature=0.0,
         max_tokens=1024,
+        sleep=sleep,
     )
 
 
@@ -105,26 +112,24 @@ class TestGroqLLMClientGenerate:
         mock_http.add(responses.POST, _GROQ_URL, json={"error": "rate limit"}, status=429)
         mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("Respuesta tras reintento."), status=200)
 
-        with patch("backend.app.infrastructure.groq_llm.time.sleep"):
-            result = client.generate("pregunta")
+        result = client.generate("pregunta")
 
         assert result == "Respuesta tras reintento."
         assert len(mock_http.calls) == 2
 
-    def test_raises_after_max_retries(self, client, mock_http):
+    def test_raises_service_busy_after_max_retries(self, client, mock_http):
         for _ in range(3):
             mock_http.add(responses.POST, _GROQ_URL, json={"error": "rate limit"}, status=429)
 
-        with patch("backend.app.infrastructure.groq_llm.time.sleep"):
-            with pytest.raises(Exception):
-                client.generate("pregunta")
+        with pytest.raises(ServiceBusyError):
+            client.generate("pregunta")
 
         assert len(mock_http.calls) == 3
 
     def test_raises_immediately_on_non_429_error(self, client, mock_http):
         mock_http.add(responses.POST, _GROQ_URL, json={"error": "server error"}, status=500)
 
-        with pytest.raises(Exception):
+        with pytest.raises(requests.HTTPError):
             client.generate("pregunta")
 
         assert len(mock_http.calls) == 1
@@ -135,16 +140,32 @@ class TestGroqLLMClientGenerate:
         with pytest.raises(ValueError, match="vacía"):
             client.generate("pregunta")
 
-    def test_retry_uses_exponential_backoff(self, client, mock_http):
+    def test_retry_uses_exponential_backoff(self, client, sleep, mock_http):
         mock_http.add(responses.POST, _GROQ_URL, json={"error": "rl"}, status=429)
         mock_http.add(responses.POST, _GROQ_URL, json={"error": "rl"}, status=429)
         mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
 
-        with patch("backend.app.infrastructure.groq_llm.time.sleep") as mock_sleep:
+        client.generate("pregunta")
+
+        delays = [c.args[0] for c in sleep.call_args_list]
+        assert delays[1] > delays[0]
+
+    def test_honors_retry_after_header(self, client, sleep, mock_http):
+        mock_http.add(responses.POST, _GROQ_URL, json={"error": "rl"}, status=429, headers={"retry-after": "7"})
+        mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+
+        client.generate("pregunta")
+
+        sleep.assert_called_once_with(7.0)
+
+    def test_gives_up_when_retry_after_exceeds_wait_budget(self, client, sleep, mock_http):
+        mock_http.add(responses.POST, _GROQ_URL, json={"error": "rl"}, status=429, headers={"retry-after": "45"})
+
+        with pytest.raises(ServiceBusyError) as exc_info:
             client.generate("pregunta")
 
-        delays = [c.args[0] for c in mock_sleep.call_args_list]
-        assert delays[1] > delays[0]
+        sleep.assert_not_called()
+        assert exc_info.value.retry_after_seconds == 45
 
     def test_raises_on_timeout(self, client, mock_http):
         mock_http.add(responses.POST, _GROQ_URL, body=requests.exceptions.Timeout())

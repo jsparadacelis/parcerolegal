@@ -13,13 +13,16 @@ from fastapi.responses import JSONResponse
 from backend.app.api.dependencies import get_settings
 from backend.app.api.routes import router
 from backend.app.api.schemas import HealthResponse
+from backend.app.domain.ports import ServiceBusyError
 from backend.app.infrastructure.config import (
     API_DESCRIPTION,
     API_TITLE,
     API_VERSION,
     CORS_ALLOW_ORIGINS,
     HTTP_SERVICE_UNAVAILABLE,
+    SERVICE_BUSY_MESSAGE,
     SERVICE_TIMEOUT_MESSAGE,
+    SERVICE_UNAVAILABLE_MESSAGE,
     Settings,
 )
 
@@ -54,6 +57,29 @@ async def timeout_handler(request: Request, exc: requests.exceptions.Timeout) ->
     return JSONResponse(
         status_code=HTTP_SERVICE_UNAVAILABLE,
         content={"detail": SERVICE_TIMEOUT_MESSAGE},
+    )
+
+
+@app.exception_handler(ServiceBusyError)
+async def service_busy_handler(request: Request, exc: ServiceBusyError) -> JSONResponse:
+    logger.warning("proveedor con rate limit tras reintentos retry_after=%ds", exc.retry_after_seconds)
+    return JSONResponse(
+        status_code=HTTP_SERVICE_UNAVAILABLE,
+        content={"detail": SERVICE_BUSY_MESSAGE},
+        headers={"Retry-After": str(exc.retry_after_seconds)},
+    )
+
+
+# Starlette elige el handler por MRO, así que Timeout conserva el suyo.
+@app.exception_handler(requests.exceptions.RequestException)
+async def provider_error_handler(
+    request: Request, exc: requests.exceptions.RequestException
+) -> JSONResponse:
+    # Solo el tipo: str(exc) de requests incluye la URL del proveedor.
+    logger.warning("proveedor externo no disponible error=%s", type(exc).__name__)
+    return JSONResponse(
+        status_code=HTTP_SERVICE_UNAVAILABLE,
+        content={"detail": SERVICE_UNAVAILABLE_MESSAGE},
     )
 
 

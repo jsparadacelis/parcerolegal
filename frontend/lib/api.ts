@@ -2,8 +2,22 @@ import type { QueryResponse, SharedQuery } from './types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 const TIMEOUT_MS = 45_000
+const HTTP_SERVICE_UNAVAILABLE = 503
+const GENERIC_ERROR_MESSAGE = 'No pudimos procesar tu pregunta. Intenta de nuevo en un momento.'
 
 export class ApiError extends Error {}
+
+// Solo el 503 trae un detail pensado para el usuario (saturación, timeout);
+// otros errores pueden traer texto técnico que no debe mostrarse.
+async function errorMessageFor(response: Response): Promise<string> {
+  if (response.status !== HTTP_SERVICE_UNAVAILABLE) return GENERIC_ERROR_MESSAGE
+  try {
+    const body = await response.json()
+    return typeof body?.detail === 'string' ? body.detail : GENERIC_ERROR_MESSAGE
+  } catch {
+    return GENERIC_ERROR_MESSAGE
+  }
+}
 
 export async function queryLegal(question: string): Promise<QueryResponse> {
   const controller = new AbortController()
@@ -17,7 +31,7 @@ export async function queryLegal(question: string): Promise<QueryResponse> {
       signal: controller.signal,
     })
     if (!response.ok) {
-      throw new ApiError('No pudimos procesar tu pregunta. Intenta de nuevo en un momento.')
+      throw new ApiError(await errorMessageFor(response))
     }
     return response.json()
   } catch (err) {
