@@ -44,14 +44,21 @@ describe('SourceCard', () => {
     ['sentencia', 'Corte Constitucional'],
     ['codigo_penal', 'Código Penal'],
     ['codigo_sustantivo_trabajo', 'Código Sustantivo del Trabajo'],
+    ['codigo_civil', 'Código Civil'],
   ] as const)('labels a %s source as "%s"', (sourceType, label) => {
     render(<SourceCard source={{ ...mockSource, source_type: sourceType }} />)
 
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
+  it('shows the CC badge for codigo_civil sources', () => {
+    render(<SourceCard source={{ ...mockSource, source_type: 'codigo_civil' }} />)
+
+    expect(screen.getByText('CC')).toBeInTheDocument()
+  })
+
   it('falls back to a generic label for an unknown source type', () => {
-    const unknownSource = { ...mockSource, source_type: 'codigo_civil' } as unknown as Source
+    const unknownSource = { ...mockSource, source_type: 'codigo_comercio' } as unknown as Source
     render(<SourceCard source={unknownSource} />)
 
     expect(screen.getByText('Fuente legal')).toBeInTheDocument()

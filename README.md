@@ -4,7 +4,7 @@ Buscador legal colombiano gratuito. Haces una pregunta en español natural y rec
 
 Producción: **https://www.parcerolegal.co**
 
-Corpus actual (~14k chunks en Qdrant):
+Corpus actual (~16k chunks en Qdrant):
 
 | Fuente | Chunks |
 |---|---|
@@ -12,6 +12,7 @@ Corpus actual (~14k chunks en Qdrant):
 | 25 sentencias clave de la Corte Constitucional (T-760/08, C-355/06, SU-214/16, T-025/04, …) | 12 072 |
 | Código Penal (parte general, delitos y penas) | 738 |
 | Código Sustantivo del Trabajo | 481 |
+| Código Civil completo (2 684 artículos, 2 036 con texto vigente) | 2 085 |
 
 ---
 
@@ -40,7 +41,7 @@ flowchart LR
     supa[("Supabase<br/>tabla queries")]
 
     subgraph pipeline["Pipeline de datos offline - data/scripts"]
-        scr["scrape_*.py<br/>funcionpublica.gov.co<br/>corteconstitucional.gov.co"]
+        scr["scrape_*.py<br/>funcionpublica.gov.co<br/>secretariasenado.gov.co<br/>corteconstitucional.gov.co"]
         proc["data/processed/*.json"]
         chunk["chunk_documents.py"]
         emb["embed_and_upload.py"]
@@ -182,13 +183,14 @@ python data/scripts/scrape_constitucion.py
 python data/scripts/scrape_sentencias.py
 python data/scripts/scrape_codigo_penal.py
 python data/scripts/scrape_codigo_sustantivo_trabajo.py
+python data/scripts/scrape_codigo_civil.py  # ~84 páginas de secretariasenado.gov.co, cacheadas en data/raw/codigo_civil/
 python data/scripts/chunk_documents.py     # → data/processed/chunks.json (800–1000 chars, overlap 150)
 python data/scripts/embed_and_upload.py    # embebe con Jina y hace upsert en Qdrant
 
 pytest data/tests/ -v
 ```
 
-`embed_and_upload.py` acepta `EMBED_SOURCE_TYPES` (p. ej. `codigo_penal,codigo_sustantivo_trabajo`) para subir solo algunas fuentes, y `START_BATCH` para reanudar una carga interrumpida.
+`embed_and_upload.py` acepta `EMBED_SOURCE_TYPES` (p. ej. `codigo_penal,codigo_sustantivo_trabajo` o `codigo_civil`) para subir solo algunas fuentes, y `START_BATCH` para reanudar una carga interrumpida.
 
 ## Variables de entorno
 

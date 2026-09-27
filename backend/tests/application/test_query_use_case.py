@@ -172,6 +172,54 @@ def a_cst_chunk_without_nombre() -> RetrievedChunk:
     )
 
 
+def a_codigo_civil_chunk() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c13",
+        text="El haber de la sociedad conyugal se compone: 1.) De los salarios...",
+        score=0.78,
+        source_type="codigo_civil",
+        metadata={
+            "article_numero": 1781,
+            "sufijo": None,
+            "nombre": "COMPOSICIÓN DE HABER DE LA SOCIEDAD CONYUGAL",
+            "libro": "LIBRO CUARTO. DE LAS OBLIGACIONES EN GENERAL Y DE LOS CONTRATOS",
+            "url_original": "http://example.com/codigo_civil_pr054.html#1781",
+        },
+    )
+
+
+def a_codigo_civil_chunk_with_sufijo() -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id="c14",
+        text="No forman parte del haber social los bienes adquiridos a título gratuito.",
+        score=0.74,
+        source_type="codigo_civil",
+        metadata={
+            "article_numero": 1781,
+            "sufijo": "A",
+            "nombre": "BIENES PROPIOS DE LOS CÓNYUGES",
+            "url_original": "http://example.com/codigo_civil_pr054.html#1781A",
+        },
+    )
+
+
+def a_codigo_civil_chunk_without_nombre() -> RetrievedChunk:
+    """Unos pocos artículos del Código Civil no traen nombre en la fuente (ej.
+    Art. 1791, solo '<Ver Notas del Editor>'): el título debe degradar con gracia."""
+    return RetrievedChunk(
+        chunk_id="c15",
+        text="La subrogación que se haga en bienes de la mujer exige autorización judicial.",
+        score=0.70,
+        source_type="codigo_civil",
+        metadata={
+            "article_numero": 1791,
+            "sufijo": None,
+            "nombre": "",
+            "url_original": "http://example.com/codigo_civil_pr055.html#1791",
+        },
+    )
+
+
 def a_sentencia_chunk() -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id="c3",
@@ -389,6 +437,36 @@ class TestSourceMapping:
         assert not title.endswith("—")
 
 
+    def test_sources_built_from_codigo_civil_chunk(self, use_case, store, llm):
+        """El nombre llega en MAYÚSCULAS desde la fuente; la tarjeta lo muestra en
+        tipo oración para no 'gritar' junto a las demás fuentes."""
+        store.search.return_value = [a_codigo_civil_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué bienes entran a la sociedad conyugal?")
+
+        source = result.sources[0]
+        assert source.source_type == "codigo_civil"
+        assert source.title == "Art. 1781 CC — Composición de haber de la sociedad conyugal"
+        assert source.url == "http://example.com/codigo_civil_pr054.html#1781"
+
+    def test_codigo_civil_source_title_includes_sufijo(self, use_case, store, llm):
+        store.search.return_value = [a_codigo_civil_chunk_with_sufijo()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué bienes son propios de cada cónyuge?")
+
+        assert result.sources[0].title == "Art. 1781A CC — Bienes propios de los cónyuges"
+
+    def test_codigo_civil_source_title_degrades_without_nombre(self, use_case, store, llm):
+        store.search.return_value = [a_codigo_civil_chunk_without_nombre()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿qué dice el artículo 1791 del Código Civil?")
+
+        assert result.sources[0].title == "Art. 1791 CC"
+
+
 class TestSourceDeduplication:
     def test_repeated_document_appears_once_in_sources(self, use_case, store, llm):
         store.search.return_value = [
@@ -453,10 +531,26 @@ class TestOutOfScope:
     def test_out_of_scope_answer_mentions_detected_area(self, use_case, store):
         store.search.return_value = []
 
-        result = use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
+        result = use_case.execute("¿cómo cobro una factura vencida?")
 
         assert result.out_of_scope is True
-        assert "Civil" in result.answer
+        assert "Comercio" in result.answer
+
+    def test_out_of_scope_answer_lists_codigo_civil_in_corpus(self, use_case, store):
+        store.search.return_value = []
+
+        result = use_case.execute("cuánto cuesta un carro en Colombia")
+
+        assert "Código Civil" in result.answer
+
+    def test_family_question_without_matches_gets_generic_answer(self, use_case, store):
+        """Divorcio ya no es un área 'fuera del corpus': si no hay chunks, el
+        mensaje no debe afirmar que el tema no está cubierto."""
+        store.search.return_value = []
+
+        result = use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
+
+        assert "todavía no está en el corpus" not in result.answer
 
     def test_out_of_scope_answer_is_generic_when_area_unknown(self, use_case, store):
         store.search.return_value = []
@@ -504,6 +598,14 @@ class TestPromptConstruction:
         use_case.execute(_HABEAS_CORPUS_QUESTION)
 
         assert "[1] a [2]" in llm.generate.call_args.kwargs["system"]
+
+    def test_system_role_covers_civil_law(self, use_case, store, llm):
+        store.search.return_value = [a_relevant_constitucion_chunk()]
+        llm.generate.return_value = "respuesta"
+
+        use_case.execute(_HABEAS_CORPUS_QUESTION)
+
+        assert "civil" in llm.generate.call_args.kwargs["system"]
 
     def test_system_role_prohibits_citations_outside_range(self, use_case, store, llm):
         store.search.return_value = [a_relevant_constitucion_chunk()]
@@ -587,10 +689,11 @@ class TestNarrowSourceCaveat:
     Ese hueco de laboral se cerró el 2026-07-23 ingiriendo el Código Sustantivo del
     Trabajo completo (ver .aiplans/ingest-codigo-sustantivo-trabajo/) — "derecho
     laboral" ya no está en `_LEGAL_AREAS`. Estos tests verifican el mecanismo en sí
-    (sigue protegiendo civil/familia y comercial, que siguen fuera de alcance).
+    (sigue protegiendo comercial, que sigue fuera de alcance; civil/familia salió el
+    2026-09-27 al ingerir el Código Civil, ver .aiplans/ingest-codigo-civil/).
     """
 
-    _EXCLUDED_AREA_QUESTION = "¿puedo quedarme con los bienes tras el divorcio?"
+    _EXCLUDED_AREA_QUESTION = "¿cómo cobro una factura vencida?"
 
     def test_adds_caveat_when_single_document_matches_excluded_area(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
@@ -599,7 +702,7 @@ class TestNarrowSourceCaveat:
         result = use_case.execute(self._EXCLUDED_AREA_QUESTION)
 
         assert "T-760-2008" in result.answer
-        assert "civil" in result.answer.lower()
+        assert "comercio" in result.answer.lower()
 
     def test_no_caveat_when_sources_are_diverse(self, use_case, store, llm):
         store.search.return_value = [a_sentencia_chunk(), a_relevant_constitucion_chunk()]
@@ -642,6 +745,15 @@ class TestNarrowSourceCaveat:
         llm.generate.return_value = "respuesta"
 
         result = use_case.execute("¿Me pueden despedir sin justa causa?")
+
+        assert result.answer == "respuesta"
+
+
+    def test_family_question_no_longer_triggers_caveat(self, use_case, store, llm):
+        store.search.return_value = [a_sentencia_chunk(), another_chunk_of_same_sentencia()]
+        llm.generate.return_value = "respuesta"
+
+        result = use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
 
         assert result.answer == "respuesta"
 
@@ -770,11 +882,11 @@ class TestQueryPersistence:
     def test_saved_record_carries_detected_area(self, use_case, store, query_log_store):
         store.search.return_value = []
 
-        use_case.execute("¿puedo quedarme con los bienes tras el divorcio?")
+        use_case.execute("¿cómo cobro una factura vencida?")
 
         saved = query_log_store.save.call_args.args[0]
         assert saved.detected_area is not None
-        assert "Civil" in saved.detected_area
+        assert "Comercio" in saved.detected_area
 
     def test_persistence_failure_does_not_break_response(
         self, use_case, store, query_log_store

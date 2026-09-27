@@ -7,6 +7,7 @@ import secrets
 import time
 
 from backend.app.domain.entities import (
+    SOURCE_TYPE_CODIGO_CIVIL,
     SOURCE_TYPE_CODIGO_PENAL,
     SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO,
     SOURCE_TYPE_CONSTITUCION,
@@ -36,8 +37,9 @@ logger = logging.getLogger("parcerolegal")
 
 _SCOPE = (
     "la Constitución Política de Colombia, las sentencias de la Corte "
-    "Constitucional, el Código Penal (parte general, delitos y penas) y el Código "
-    "Sustantivo del Trabajo (contrato de trabajo, despido y derecho colectivo)"
+    "Constitucional, el Código Penal (parte general, delitos y penas), el Código "
+    "Sustantivo del Trabajo (contrato de trabajo, despido y derecho colectivo) y "
+    "el Código Civil (personas y familia, bienes, sucesiones, obligaciones y contratos)"
 )
 
 
@@ -58,7 +60,7 @@ def _build_out_of_scope_answer(question: str) -> str:
     )
 
 _SYSTEM_ROLE_TEMPLATE = """\
-Eres un asistente jurídico especializado en derecho constitucional, penal y laboral colombiano.
+Eres un asistente jurídico especializado en derecho constitucional, penal, laboral y civil colombiano.
 Responde ÚNICAMENTE basándote en los fragmentos de legislación proporcionados.
 
 Reglas:
@@ -208,6 +210,9 @@ def _chunk_to_source(chunk: RetrievedChunk) -> Source:
     elif chunk.source_type == SOURCE_TYPE_CODIGO_SUSTANTIVO_TRABAJO:
         title = _cst_title(chunk.metadata)
         url = chunk.metadata.get("url_original", "")
+    elif chunk.source_type == SOURCE_TYPE_CODIGO_CIVIL:
+        title = _codigo_civil_title(chunk.metadata)
+        url = chunk.metadata.get("url_original", "")
     else:
         title = chunk.metadata.get("sentencia_id", "")
         url = chunk.metadata.get("source_url", "")
@@ -249,3 +254,19 @@ def _cst_title(metadata: dict) -> str:
     if nombre:
         return f"Art. {numero_label} CST — {nombre}"
     return f"Art. {numero_label} CST"
+
+
+def _codigo_civil_title(metadata: dict) -> str:
+    """'Art. 1781 CC — Composición de haber de la sociedad conyugal'. La fuente
+    trae el nombre en MAYÚSCULAS; se pasa a tipo oración para que la tarjeta no
+    desentone con las demás. Degrada a 'Art. 1791 CC' sin nombre, igual que
+    _codigo_penal_title y _cst_title."""
+    article_numero = metadata.get("article_numero", "")
+    sufijo = metadata.get("sufijo") or ""
+    nombre = (metadata.get("nombre") or "").capitalize()
+    numero_label = f"{article_numero}{sufijo}"
+    if not numero_label:
+        return nombre
+    if nombre:
+        return f"Art. {numero_label} CC — {nombre}"
+    return f"Art. {numero_label} CC"

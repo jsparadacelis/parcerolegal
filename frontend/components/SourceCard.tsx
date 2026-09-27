@@ -43,6 +43,12 @@ const SOURCE_META: Record<SourceType, SourceMeta> = {
     badgeClass: 'font-mono font-bold text-[9px] leading-none',
     label: 'Código Sustantivo del Trabajo',
   },
+  codigo_civil: {
+    badge: 'CC',
+    chipClass: 'bg-surface-3 text-ink-2',
+    badgeClass: 'font-mono font-bold text-[11px] leading-none',
+    label: 'Código Civil',
+  },
 }
 
 // Si el backend suma un corpus que el frontend todavía no conoce, la tarjeta se

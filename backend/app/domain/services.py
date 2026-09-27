@@ -27,31 +27,22 @@ _TRAILING_DANGLING_COMMA_PATTERN = re.compile(r"[ \t]*,[ \t]*$", re.MULTILINE)
 _TRAILING_WHITESPACE_PATTERN = re.compile(r"[ \t]+$", re.MULTILINE)
 
 # Áreas del derecho fuera del corpus actual (Constitución + sentencias de la Corte
-# + Código Penal Libro II + Código Sustantivo del Trabajo). Orden importa: la
-# primera coincidencia gana. Solo se usa para dar contexto en el mensaje de
-# fuera-de-alcance, nunca decide si se responde o no.
+# + Código Penal Libros I y II + Código Sustantivo del Trabajo + Código Civil). Orden
+# importa: la primera coincidencia gana. Solo se usa para dar contexto en el
+# mensaje de fuera-de-alcance, nunca decide si se responde o no.
 #
 # "derecho penal" se retiró de aquí el 2026-07-15 (Código Penal Libro II al
 # corpus). "derecho laboral" se retiró el 2026-07-23 (Código Sustantivo del
-# Trabajo completo al corpus, ver .aiplans/ingest-codigo-sustantivo-trabajo/):
-# preguntas de despido/terminación del contrato ya no son fuera de alcance —
-# deben resolverse por retrieval normal contra el CST real, no solo contra
-# sentencias puntuales (ver .aiplans/narrow-single-document-caveat/, el caso
-# que motivó ingerir el CST).
+# Trabajo completo al corpus, ver .aiplans/ingest-codigo-sustantivo-trabajo/).
+# "derecho de familia y sucesiones" se retiró el 2026-09-27 (Código Civil completo
+# al corpus, ver .aiplans/ingest-codigo-civil/), junto con los contratos civiles
+# (arrendamiento, compraventa: Títulos XXIII y XXVI del Libro IV). Queda solo lo
+# propiamente mercantil, regulado por el Código de Comercio.
 _LEGAL_AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
-        "derecho de familia y sucesiones (regulado por el Código Civil)",
+        "derecho comercial (regulado por el Código de Comercio)",
         (
-            "divorcio", "sociedad conyugal", "bienes conyugales", "gananciales",
-            "herencia", "sucesión", "sucesion", "matrimonio", "custodia",
-            "patria potestad", "cuota alimentaria",
-        ),
-    ),
-    (
-        "derecho comercial o de contratos (Código de Comercio / Código Civil)",
-        (
-            "arriendo", "arrendamiento", "compraventa", "cobro de cartera",
-            "sociedad comercial", "factura",
+            "cobro de cartera", "sociedad comercial", "factura",
         ),
     ),
 )

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from data.scripts.chunk_documents import chunk_codigo_sustantivo_trabajo
+from data.scripts.chunk_documents import chunk_codigo_civil, chunk_codigo_sustantivo_trabajo
 
 
 # ---------------------------------------------------------------------------
@@ -578,14 +578,131 @@ class TestChunkCodigoSustantivoTrabajo:
 
 
 # ---------------------------------------------------------------------------
+# chunk_codigo_civil
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_codigo_civil(tmp_path):
+    data = {
+        "metadata": {
+            "title": "Código Civil (Ley 84 de 1873, adoptado por la Ley 57 de 1887)",
+            "source_url": "http://example.com/codigo_civil.html",
+            "total_articles": 4,
+        },
+        "articles": [
+            {
+                "id": "cc_art_1781",
+                "numero": 1781,
+                "sufijo": None,
+                "nombre": "COMPOSICIÓN DE HABER DE LA SOCIEDAD CONYUGAL",
+                "libro": "LIBRO CUARTO. DE LAS OBLIGACIONES EN GENERAL Y DE LOS CONTRATOS",
+                "titulo": "TÍTULO XXII. DE LAS CAPITULACIONES MATRIMONIALES Y DE LA SOCIEDAD CONYUGAL",
+                "capitulo": "CAPÍTULO II. DEL HABER DE LA SOCIEDAD CONYUGAL Y DE SUS CARGAS",
+                "texto": " ".join(
+                    ["%d.) Bien número %d que compone el haber de la sociedad conyugal." % (i, i) for i in range(30)]
+                ),
+                "url_original": "http://example.com/codigo_civil_pr054.html#1781",
+            },
+            {
+                "id": "cc_art_1781_a",
+                "numero": 1781,
+                "sufijo": "A",
+                "nombre": "BIENES PROPIOS",
+                "libro": "LIBRO CUARTO. DE LAS OBLIGACIONES EN GENERAL Y DE LOS CONTRATOS",
+                "titulo": "TÍTULO XXII. DE LAS CAPITULACIONES MATRIMONIALES Y DE LA SOCIEDAD CONYUGAL",
+                "capitulo": None,
+                "texto": "No forman parte del haber social los bienes adquiridos a título gratuito.",
+                "url_original": "http://example.com/codigo_civil_pr054.html#1781A",
+            },
+            {
+                "id": "cc_art_1",
+                "numero": 1,
+                "sufijo": None,
+                "nombre": "DISPOSICIONES COMPRENDIDAS",
+                "libro": None,
+                "titulo": "TÍTULO PRELIMINAR",
+                "capitulo": "CAPÍTULO I. OBJETO Y FUERZA DE ESTE CÓDIGO",
+                "texto": "El Código Civil comprende las disposiciones legales sustantivas.",
+                "url_original": "http://example.com/codigo_civil.html#1",
+            },
+            {
+                "id": "cc_art_269",
+                "numero": 269,
+                "sufijo": None,
+                "nombre": "",
+                "libro": "LIBRO PRIMERO. DE LAS PERSONAS",
+                "titulo": "TÍTULO XIII. DE LA ADOPCIÓN",
+                "capitulo": None,
+                "texto": "",
+                "url_original": "http://example.com/codigo_civil_pr008.html#269",
+            },
+        ],
+    }
+    path = tmp_path / "codigo_civil.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def codigo_civil_chunks(sample_codigo_civil):
+    return chunk_codigo_civil(sample_codigo_civil)
+
+
+class TestChunkCodigoCivil:
+    def test_chunk_has_required_fields(self, codigo_civil_chunks):
+        required = {
+            "chunk_id", "text", "source_type", "article_id", "article_numero",
+            "sufijo", "nombre", "libro", "titulo", "capitulo", "url_original",
+        }
+        for c in codigo_civil_chunks:
+            missing = required - c.keys()
+            assert not missing, f"Chunk {c.get('chunk_id')} le faltan campos: {missing}"
+
+    def test_source_type_is_codigo_civil(self, codigo_civil_chunks):
+        assert {c["source_type"] for c in codigo_civil_chunks} == {"codigo_civil"}
+
+    def test_long_article_multiple_chunks(self, codigo_civil_chunks):
+        art1781 = [c for c in codigo_civil_chunks if c["article_id"] == "cc_art_1781"]
+        assert len(art1781) >= 2
+        assert [c["chunk_id"] for c in art1781][:2] == [
+            "codigo_civil_cc_art_1781_0",
+            "codigo_civil_cc_art_1781_1",
+        ]
+
+    def test_suffixed_article_uses_full_id_not_bare_numero(self, codigo_civil_chunks):
+        [art1781_a] = [c for c in codigo_civil_chunks if c["article_id"] == "cc_art_1781_a"]
+        assert art1781_a["chunk_id"] == "codigo_civil_cc_art_1781_a_0"
+        assert art1781_a["sufijo"] == "A"
+
+    def test_chunk_ids_are_unique(self, codigo_civil_chunks):
+        ids = [c["chunk_id"] for c in codigo_civil_chunks]
+        assert len(ids) == len(set(ids))
+
+    def test_preserves_article_metadata(self, codigo_civil_chunks):
+        [art1] = [c for c in codigo_civil_chunks if c["article_id"] == "cc_art_1"]
+        assert art1["article_numero"] == 1
+        assert art1["nombre"] == "DISPOSICIONES COMPRENDIDAS"
+        assert art1["libro"] is None
+        assert art1["titulo"] == "TÍTULO PRELIMINAR"
+        assert art1["capitulo"] == "CAPÍTULO I. OBJETO Y FUERZA DE ESTE CÓDIGO"
+        assert art1["url_original"] == "http://example.com/codigo_civil.html#1"
+
+    def test_derogated_article_with_empty_texto_is_skipped(self, codigo_civil_chunks):
+        assert not any(c["article_id"] == "cc_art_269" for c in codigo_civil_chunks)
+
+
+# ---------------------------------------------------------------------------
 # build_output
 # ---------------------------------------------------------------------------
 
 
 class TestBuildOutput:
-    def _build(self, const_chunks, sent_chunks, cp_chunks, cst_chunks=None):
+    def _build(self, const_chunks, sent_chunks, cp_chunks, cst_chunks=None, cc_chunks=None):
         from data.scripts.chunk_documents import build_output
-        return build_output(const_chunks, sent_chunks, cp_chunks, cst_chunks or [])
+        return build_output(
+            const_chunks, sent_chunks, cp_chunks, cst_chunks or [], cc_chunks or []
+        )
 
     def test_has_metadata_and_chunks(self):
         output = self._build(
@@ -601,16 +718,19 @@ class TestBuildOutput:
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
         cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
         cst = [{"chunk_id": f"t{i}", "source_type": "codigo_sustantivo_trabajo"} for i in range(2)]
-        output = self._build(const, sent, cp, cst)
-        assert output["metadata"]["total_chunks"] == 14
-        assert len(output["chunks"]) == 14
+        cc = [{"chunk_id": f"cc{i}", "source_type": "codigo_civil"} for i in range(6)]
+        output = self._build(const, sent, cp, cst, cc)
+        assert output["metadata"]["total_chunks"] == 20
+        assert len(output["chunks"]) == 20
 
     def test_source_counts_correct(self):
         const = [{"chunk_id": f"c{i}", "source_type": "constitucion"} for i in range(3)]
         sent = [{"chunk_id": f"s{i}", "source_type": "sentencia"} for i in range(5)]
         cp = [{"chunk_id": f"p{i}", "source_type": "codigo_penal"} for i in range(4)]
         cst = [{"chunk_id": f"t{i}", "source_type": "codigo_sustantivo_trabajo"} for i in range(2)]
-        output = self._build(const, sent, cp, cst)
+        cc = [{"chunk_id": f"cc{i}", "source_type": "codigo_civil"} for i in range(6)]
+        output = self._build(const, sent, cp, cst, cc)
+        assert output["metadata"]["sources"]["codigo_civil"] == 6
         assert output["metadata"]["sources"]["constitucion"] == 3
         assert output["metadata"]["sources"]["sentencias"] == 5
         assert output["metadata"]["sources"]["codigo_penal"] == 4
@@ -632,3 +752,4 @@ class TestBuildOutput:
         output = self._build(const, sent, [])
         assert output["metadata"]["sources"]["codigo_penal"] == 0
         assert output["metadata"]["sources"]["codigo_sustantivo_trabajo"] == 0
+        assert output["metadata"]["sources"]["codigo_civil"] == 0
