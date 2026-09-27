@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+import re
 import time
 
 import requests
 
 from backend.app.infrastructure.config import (
     GROQ_CHAT_COMPLETIONS_URL,
+    GROQ_INCLUDE_REASONING,
     GROQ_MAX_RETRIES,
+    GROQ_REASONING_EFFORT,
     GROQ_RETRY_BASE_DELAY_SECONDS,
     GROQ_TIMEOUT_SECONDS,
     HTTP_TOO_MANY_REQUESTS,
 )
+
+# gpt-oss cita con corchetes de ancho completo (【2】, 【2†L3-L5】) aunque el
+# prompt pida [2]; se normalizan para que sanitize_citations las valide.
+_FULLWIDTH_CITATION_PATTERN = re.compile(r"【(\d+)(?:†[^】]*)?】")
 
 
 class GroqLLMClient:
@@ -36,6 +43,8 @@ class GroqLLMClient:
             "messages": messages,
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
+            "reasoning_effort": GROQ_REASONING_EFFORT,
+            "include_reasoning": GROQ_INCLUDE_REASONING,
         }
 
         last_response: requests.Response | None = None
@@ -52,6 +61,6 @@ class GroqLLMClient:
             content = response.json()["choices"][0]["message"]["content"]
             if not content:
                 raise ValueError("La respuesta del LLM está vacía")
-            return content
+            return _FULLWIDTH_CITATION_PATTERN.sub(r"[\1]", content)
 
         last_response.raise_for_status()

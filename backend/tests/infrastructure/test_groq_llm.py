@@ -41,6 +41,13 @@ class TestGroqLLMClientGenerate:
 
         assert client.generate("¿Qué es el habeas corpus?") == "Respuesta legal."
 
+    def test_normalizes_fullwidth_citations_to_ascii(self, client, mock_http):
+        mock_http.add(
+            responses.POST, _GROQ_URL, json=_groq_body("La pena es de 6 a 14 años【2】 y【1†L3-L5】."), status=200
+        )
+
+        assert client.generate("pregunta") == "La pena es de 6 a 14 años[2] y[1]."
+
     def test_sends_correct_parameters_without_system(self, client, mock_http):
         mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
 
@@ -51,6 +58,22 @@ class TestGroqLLMClientGenerate:
         assert sent["messages"] == [{"role": "user", "content": "pregunta"}]
         assert sent["temperature"] == 0.0
         assert sent["max_tokens"] == 1024
+
+    def test_sends_low_reasoning_effort(self, client, mock_http):
+        mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+
+        client.generate("pregunta")
+
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert sent["reasoning_effort"] == "low"
+
+    def test_excludes_reasoning_from_response(self, client, mock_http):
+        mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
+
+        client.generate("pregunta")
+
+        sent = json.loads(mock_http.calls[0].request.body)
+        assert sent["include_reasoning"] is False
 
     def test_sends_system_message_when_provided(self, client, mock_http):
         mock_http.add(responses.POST, _GROQ_URL, json=_groq_body("ok"), status=200)
