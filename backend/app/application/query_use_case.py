@@ -104,18 +104,23 @@ class QueryUseCase:
         chunks = self._store.search(embedding, top_k=self._top_k, sentencia_id=sentencia_id)
         filtered = chunks if sentencia_id and chunks else filter_by_score(chunks)
 
-        elapsed_ms = lambda: (time.time() - start) * 1000
-
         if is_out_of_scope(filtered):
             answer = _build_out_of_scope_answer(question)
+            processing_time_ms = _elapsed_ms_since(start)
             self._record_query(
-                question, answer, chunks, sources=[], out_of_scope=True, share_token=share_token
+                question,
+                answer,
+                chunks,
+                sources=[],
+                out_of_scope=True,
+                share_token=share_token,
+                processing_time_ms=processing_time_ms,
             )
             return QueryResult(
                 answer=answer,
                 sources=[],
                 out_of_scope=True,
-                processing_time_ms=elapsed_ms(),
+                processing_time_ms=processing_time_ms,
                 share_token=share_token,
             )
 
@@ -140,15 +145,22 @@ class QueryUseCase:
             if area and is_single_document_answer(raw_sources):
                 answer = _append_narrow_source_caveat(answer, area, sources[0].title)
 
+        processing_time_ms = _elapsed_ms_since(start)
         self._record_query(
-            question, answer, chunks, sources=sources, out_of_scope=False, share_token=share_token
+            question,
+            answer,
+            chunks,
+            sources=sources,
+            out_of_scope=False,
+            share_token=share_token,
+            processing_time_ms=processing_time_ms,
         )
 
         return QueryResult(
             answer=answer,
             sources=sources,
             out_of_scope=False,
-            processing_time_ms=elapsed_ms(),
+            processing_time_ms=processing_time_ms,
             share_token=share_token,
         )
 
@@ -160,6 +172,7 @@ class QueryUseCase:
         sources: list[Source],
         out_of_scope: bool,
         share_token: str,
+        processing_time_ms: float,
     ) -> None:
         """Persiste la consulta respondida, best-effort.
 
@@ -175,11 +188,16 @@ class QueryUseCase:
             detected_area=detect_legal_area(question),
             out_of_scope=out_of_scope,
             share_token=share_token,
+            processing_time_ms=round(processing_time_ms),
         )
         try:
             self._query_log_store.save(record)
         except Exception:  # noqa: BLE001 — best-effort, no debe afectar la consulta
             logger.exception("no se pudo guardar la consulta")
+
+
+def _elapsed_ms_since(start: float) -> float:
+    return (time.time() - start) * 1000
 
 
 def _append_narrow_source_caveat(answer: str, area: str, document_title: str) -> str:

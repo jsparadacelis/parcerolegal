@@ -68,4 +68,5 @@ def _row_to_query_log(row: dict) -> QueryLog:
         detected_area=row["detected_area"],
         out_of_scope=row["out_of_scope"],
         share_token=row["share_token"],
+        processing_time_ms=row.get("processing_time_ms"),
     )

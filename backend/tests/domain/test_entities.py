@@ -112,6 +112,34 @@ class TestQueryLog:
 
         assert log.sources == []
 
+    def test_processing_time_ms_defaults_to_none(self):
+        """Filas guardadas antes de la migración 006 no tienen latencia."""
+        log = QueryLog(
+            question="¿Cuánto cuesta el arroz?",
+            answer="fuera de alcance...",
+            sources=[],
+            top_score=0.30,
+            detected_area=None,
+            out_of_scope=True,
+            share_token="ab12cd34ef",
+        )
+
+        assert log.processing_time_ms is None
+
+    def test_carries_processing_time_ms(self):
+        log = QueryLog(
+            question="¿Qué es el habeas corpus?",
+            answer="El habeas corpus es un derecho fundamental.",
+            sources=[],
+            top_score=0.85,
+            detected_area=None,
+            out_of_scope=False,
+            share_token="kJ3f9xQb2p1",
+            processing_time_ms=1834,
+        )
+
+        assert log.processing_time_ms == 1834
+
 
 class TestQueryResult:
     def test_out_of_scope_result(self):
